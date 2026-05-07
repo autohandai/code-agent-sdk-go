@@ -2,6 +2,8 @@
 
 Autohand Code Agent SDK - CLI wrapper implementation for Go.
 
+**Beta:** this SDK is actively evolving while the Agent SDK APIs stabilize. Pin versions in production and review release notes before upgrading.
+
 ## Overview
 
 This SDK provides a Go wrapper around the Autohand CLI binary, enabling programmatic access to Autohand's autonomous coding agent capabilities via JSON-RPC 2.0 protocol.
@@ -18,9 +20,9 @@ The SDK:
 - Provides an idiomatic Go API
 - Supports streaming events
 
-## Other SDKs
+## Other Programming Languages (Beta)
 
-Use the same CLI-backed SDK model from another language:
+The Agent SDK is available in multiple beta language packages. Use the same CLI-backed SDK model from another programming language:
 
 - [TypeScript](https://github.com/autohandai/code-agent-sdk-typescript) - `Agent`, `Run`, streaming, and JSON helpers for Node and Bun hosts.
 - [Go](https://github.com/autohandai/code-agent-sdk-go) - this package, with `context.Context`, typed events, and channel-based streaming.
