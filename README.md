@@ -25,6 +25,8 @@ Use the same CLI-backed SDK model from another language:
 - [TypeScript](https://github.com/autohandai/code-agent-sdk-typescript) - `Agent`, `Run`, streaming, and JSON helpers for Node and Bun hosts.
 - [Go](https://github.com/autohandai/code-agent-sdk-go) - this package, with `context.Context`, typed events, and channel-based streaming.
 - [Python](https://github.com/autohandai/code-agent-sdk-python) - async Python package with `async for` event streams and typed Pydantic models.
+- [Java](https://github.com/autohandai/code-agent-sdk-java) - Java 21 records, sealed events, and virtual-thread-ready APIs.
+- [Swift](https://github.com/autohandai/code-agent-sdk-swift) - SwiftPM package with `Agent`, `Runner`, async streams, tools, hooks, and permissions.
 
 ## Installation
 
