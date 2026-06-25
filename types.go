@@ -331,6 +331,53 @@ type HooksSettings struct {
 // HookEvent represents hook event types.
 type HookEvent string
 
+const (
+	HookEventSessionStart      HookEvent = "session-start"
+	HookEventSessionEnd        HookEvent = "session-end"
+	HookEventPreClear          HookEvent = "pre-clear"
+	HookEventPrePrompt         HookEvent = "pre-prompt"
+	HookEventPreTool           HookEvent = "pre-tool"
+	HookEventPostTool          HookEvent = "post-tool"
+	HookEventFileModified      HookEvent = "file-modified"
+	HookEventStop              HookEvent = "stop"
+	HookEventPostResponse      HookEvent = "post-response"
+	HookEventSubagentStop      HookEvent = "subagent-stop"
+	HookEventPermissionRequest HookEvent = "permission-request"
+	HookEventNotification      HookEvent = "notification"
+	HookEventSessionError      HookEvent = "session-error"
+
+	HookEventAutomodeStart      HookEvent = "automode:start"
+	HookEventAutomodeIteration  HookEvent = "automode:iteration"
+	HookEventAutomodeCheckpoint HookEvent = "automode:checkpoint"
+	HookEventAutomodePause      HookEvent = "automode:pause"
+	HookEventAutomodeResume     HookEvent = "automode:resume"
+	HookEventAutomodeCancel     HookEvent = "automode:cancel"
+	HookEventAutomodeComplete   HookEvent = "automode:complete"
+	HookEventAutomodeError      HookEvent = "automode:error"
+
+	HookEventPreLearn  HookEvent = "pre-learn"
+	HookEventPostLearn HookEvent = "post-learn"
+
+	HookEventTeamCreated     HookEvent = "team-created"
+	HookEventTeammateSpawned HookEvent = "teammate-spawned"
+	HookEventTeammateIdle    HookEvent = "teammate-idle"
+	HookEventTaskAssigned    HookEvent = "task-assigned"
+	HookEventTaskCompleted   HookEvent = "task-completed"
+	HookEventTeamShutdown    HookEvent = "team-shutdown"
+
+	HookEventReviewStart     HookEvent = "review:start"
+	HookEventReviewEnd       HookEvent = "review:end"
+	HookEventReviewPaused    HookEvent = "review:paused"
+	HookEventReviewFailed    HookEvent = "review:failed"
+	HookEventReviewCompleted HookEvent = "review:completed"
+
+	HookEventModeChange      HookEvent = "mode-change"
+	HookEventContextCompact  HookEvent = "context:compact"
+	HookEventContextOverflow HookEvent = "context:overflow"
+	HookEventContextWarning  HookEvent = "context:warning"
+	HookEventContextCritical HookEvent = "context:critical"
+)
+
 // HookDefinition defines a lifecycle hook.
 type HookDefinition struct {
 	Event       HookEvent

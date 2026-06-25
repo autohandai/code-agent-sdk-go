@@ -48,6 +48,21 @@ func TestAllowDecision(t *testing.T) {
 	}
 }
 
+func TestHookEventConstants(t *testing.T) {
+	tests := map[string]HookEvent{
+		"post-response":       HookEventPostResponse,
+		"teammate-spawned":    HookEventTeammateSpawned,
+		"context:critical":    HookEventContextCritical,
+		"automode:checkpoint": HookEventAutomodeCheckpoint,
+	}
+
+	for expected, event := range tests {
+		if string(event) != expected {
+			t.Errorf("HookEvent constant = %q, want %q", event, expected)
+		}
+	}
+}
+
 func TestDenyDecision(t *testing.T) {
 	tests := []struct {
 		scope    DecisionScope

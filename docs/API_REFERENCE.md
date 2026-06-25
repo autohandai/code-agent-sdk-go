@@ -158,9 +158,9 @@ err = sdk.PermissionResponse(ctx, requestID, autohand.DecisionAlternative)
 
 ```go
 hooks, err := sdk.GetHooks(ctx)
-err = sdk.AddHook(ctx, autohand.HookDefinition{Event: "pre-tool", Command: "echo {{tool}}"})
-err = sdk.ToggleHook(ctx, "pre-tool", 0)
-err = sdk.RemoveHook(ctx, "pre-tool", 0)
+err = sdk.AddHook(ctx, autohand.HookDefinition{Event: autohand.HookEventPreTool, Command: "echo {{tool}}"})
+err = sdk.ToggleHook(ctx, autohand.HookEventPreTool, 0)
+err = sdk.RemoveHook(ctx, autohand.HookEventPreTool, 0)
 err = sdk.ToggleMCPServer(ctx, "filesystem", true)
 err = sdk.SetMCPServers(ctx, map[string]autohand.MCPServerConfig{})
 ```

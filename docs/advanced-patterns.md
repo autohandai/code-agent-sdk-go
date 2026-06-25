@@ -95,7 +95,7 @@ corresponding hook RPCs:
 
 ```go
 err := sdk.AddHook(ctx, autohand.HookDefinition{
-    Event:   "pre-tool",
+    Event:   autohand.HookEventPreTool,
     Command: "echo about to run {{tool}}",
 })
 ```
@@ -104,8 +104,8 @@ Inspect or update hooks:
 
 ```go
 hooks, err := sdk.GetHooks(ctx)
-err = sdk.ToggleHook(ctx, "pre-tool", 0)
-err = sdk.RemoveHook(ctx, "pre-tool", 0)
+err = sdk.ToggleHook(ctx, autohand.HookEventPreTool, 0)
+err = sdk.RemoveHook(ctx, autohand.HookEventPreTool, 0)
 _ = hooks
 ```
 
