@@ -316,7 +316,40 @@ func (a *Agent) PermissionResponse(ctx context.Context, requestID string, decisi
 
 // Autoresearch starts a high-level slash-command run for the objective.
 func (a *Agent) Autoresearch(ctx context.Context, objective string, opts *PromptParams) (*Run, error) {
-	return a.Send(ctx, "/autoresearch "+objective, opts)
+	return a.Command(ctx, "/autoresearch", []string{objective}, opts)
+}
+
+// Command starts any validated slash command as a run.
+func (a *Agent) Command(ctx context.Context, command string, args []string, opts *PromptParams) (*Run, error) {
+	formatted, err := FormatSlashCommand(command, args...)
+	if err != nil {
+		return nil, err
+	}
+	return a.Send(ctx, formatted, opts)
+}
+
+func (a *Agent) DeepResearch(ctx context.Context, objective string, opts *PromptParams) (*Run, error) {
+	return a.Command(ctx, "/deep-research", []string{objective}, opts)
+}
+
+func (a *Agent) GetGoal(ctx context.Context) (*GoalSnapshot, error) { return a.sdk.GetGoal(ctx) }
+func (a *Agent) CreateGoal(ctx context.Context, p *GoalCreateParams) (*GoalMutationResult, error) {
+	return a.sdk.CreateGoal(ctx, p)
+}
+func (a *Agent) UpdateGoal(ctx context.Context, p *GoalUpdateParams) (*GoalMutationResult, error) {
+	return a.sdk.UpdateGoal(ctx, p)
+}
+func (a *Agent) QueueGoal(ctx context.Context, p *GoalCreateParams) (*GoalMutationResult, error) {
+	return a.sdk.QueueGoal(ctx, p)
+}
+func (a *Agent) StartQueuedGoal(ctx context.Context) (*GoalMutationResult, error) {
+	return a.sdk.StartQueuedGoal(ctx)
+}
+func (a *Agent) ListGoalTemplates(ctx context.Context) ([]GoalTemplateMetadata, error) {
+	return a.sdk.ListGoalTemplates(ctx)
+}
+func (a *Agent) ClearGoal(ctx context.Context) (*GoalMutationResult, error) {
+	return a.sdk.ClearGoal(ctx)
 }
 
 // StartAutoresearch initializes or resumes a persisted autoresearch loop.

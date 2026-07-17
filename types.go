@@ -64,6 +64,8 @@ const (
 	ProviderDeepSeek   ProviderName = "deepseek"
 	ProviderVertexAI   ProviderName = "vertexai"
 	ProviderNvidia     ProviderName = "nvidia"
+	ProviderSakana     ProviderName = "sakana"
+	ProviderBedrock    ProviderName = "bedrock"
 )
 
 // PermissionMode represents CLI-3 permission modes.
@@ -174,9 +176,10 @@ type Config struct {
 	MaxBudgetUSD  float64
 	Temperature   float64
 
-	Provider ProviderName
-	APIKey   string
-	BaseURL  string
+	Provider       ProviderName
+	APIKey         string
+	BaseURL        string
+	AutohandAIPlan string
 
 	PermissionMode PermissionMode
 	Permissions    *PermissionSettings
@@ -188,6 +191,8 @@ type Config struct {
 	Unrestricted bool
 	AutoCommit   bool
 	AutoSkill    bool
+	Bare         bool
+	IdleLogout   *bool
 
 	MaxIterations int
 	MaxRuntime    int
@@ -201,6 +206,7 @@ type Config struct {
 	SkillRefs []SkillRef
 
 	ContextCompact         bool
+	NoContextCompact       bool
 	MaxTokens              int
 	CompressionThreshold   float64
 	SummarizationThreshold float64
@@ -209,17 +215,28 @@ type Config struct {
 	SessionID        string
 	Resume           bool
 	Continue         bool
+	Fork             bool
 	SessionPath      string
 	AutoSaveInterval int
 
 	AgentsMdEnable     bool
+	NoAgentsMd         bool
 	AgentsMdCreate     bool
 	AgentsMdPath       string
 	AgentsMdAutoUpdate bool
 
-	AdditionalDirectories []string
-	AddDir                []string
-	ExtraArgs             []string
+	AdditionalDirectories  []string
+	AddDir                 []string
+	ExtraArgs              []string
+	DisplayLanguage        string
+	SystemPromptFile       string
+	AppendSystemPromptFile string
+	MCPConfig              string
+	Agents                 string
+	PluginDir              string
+	SkillSources           []string
+	InstallMissingSkills   bool
+	Features               *FeatureFlagSettings
 
 	Env     map[string]string
 	EnvVars map[string]string
@@ -259,6 +276,19 @@ type Config struct {
 	CanUseTool              func(toolName string) bool
 	EnableFileCheckpointing bool
 	OnElicitation           func(params interface{}) interface{}
+}
+
+// FeatureFlagSettings are applied through autohand.applyFlagSettings at startup.
+type FeatureFlagSettings struct {
+	Environment         string            `json:"environment,omitempty"`
+	RemoteOverrides     map[string]string `json:"remoteOverrides,omitempty"`
+	UsageV2             *bool             `json:"usageV2,omitempty"`
+	AWSBedrockProvider  *bool             `json:"awsBedrockProvider,omitempty"`
+	SlashGoal           *bool             `json:"slashGoal,omitempty"`
+	TokenUsageStatus    *bool             `json:"tokenUsageStatus,omitempty"`
+	ExperimentalFork    *bool             `json:"experimentalFork,omitempty"`
+	ExperimentalClone   *bool             `json:"experimentalClone,omitempty"`
+	ExperimentalHandoff *bool             `json:"experimentalHandoff,omitempty"`
 }
 
 // PermissionSettings holds fine-grained permission configuration.
@@ -586,12 +616,13 @@ func (e TurnStartEvent) eventType() string { return "turn_start" }
 
 // TurnEndEvent is emitted when a turn ends.
 type TurnEndEvent struct {
-	Type           string  `json:"type"`
-	TurnID         string  `json:"turnId"`
-	Timestamp      string  `json:"timestamp"`
-	TokensUsed     int     `json:"tokensUsed,omitempty"`
-	DurationMs     int     `json:"durationMs,omitempty"`
-	ContextPercent float64 `json:"contextPercent,omitempty"`
+	Type              string  `json:"type"`
+	TurnID            string  `json:"turnId"`
+	Timestamp         string  `json:"timestamp"`
+	TokensUsed        int     `json:"tokensUsed,omitempty"`
+	TokensUsageStatus string  `json:"tokensUsageStatus,omitempty"`
+	DurationMs        int     `json:"durationMs,omitempty"`
+	ContextPercent    float64 `json:"contextPercent,omitempty"`
 }
 
 func (e TurnEndEvent) eventType() string { return "turn_end" }

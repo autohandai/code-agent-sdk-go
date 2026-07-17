@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 )
 
@@ -19,6 +21,20 @@ type SDK struct {
 func NewSDK(cfg *Config) *SDK {
 	if cfg == nil {
 		cfg = &Config{}
+	}
+	if cfg.Provider == "" && os.Getenv("AUTOHAND_AI_API_KEY") != "" {
+		cfg.Provider = ProviderAutohandAI
+	}
+	if cfg.Provider == ProviderAutohandAI {
+		if cfg.APIKey == "" {
+			cfg.APIKey = os.Getenv("AUTOHAND_AI_API_KEY")
+		}
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = os.Getenv("AUTOHAND_AI_BASE_URL")
+		}
+		if cfg.AutohandAIPlan == "" {
+			cfg.AutohandAIPlan = os.Getenv("AUTOHAND_AI_PLAN")
+		}
 	}
 	return &SDK{
 		cfg:    cfg,
@@ -39,6 +55,11 @@ func (s *SDK) Start(ctx context.Context) error {
 		return fmt.Errorf("start SDK: %w", err)
 	}
 	s.started = true
+	if s.cfg.Features != nil {
+		if err := s.client.ApplyFlagSettings(ctx, map[string]interface{}{"features": s.cfg.Features}); err != nil {
+			return fmt.Errorf("apply startup feature settings: %w", err)
+		}
+	}
 
 	if s.cfg.PermissionMode != "" && s.cfg.PermissionMode != PermissionInteractive {
 		if err := s.client.SetPermissionMode(ctx, s.cfg.PermissionMode); err != nil {
@@ -53,6 +74,95 @@ func (s *SDK) Start(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// StreamCommand streams a validated slash command.
+func (s *SDK) StreamCommand(ctx context.Context, command string, args []string, opts *PromptParams) (<-chan Event, error) {
+	formatted, err := FormatSlashCommand(command, args...)
+	if err != nil {
+		return nil, err
+	}
+	if opts == nil {
+		opts = &PromptParams{}
+	}
+	opts.Message = formatted
+	return s.StreamPrompt(ctx, opts)
+}
+
+// SupportedCommands returns normalized commands discovered from the live CLI.
+func (s *SDK) SupportedCommands(ctx context.Context) ([]string, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	commands, err := s.client.GetSupportedCommands(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for i, command := range commands {
+		command = strings.TrimSpace(command)
+		if !strings.HasPrefix(command, "/") {
+			command = "/" + command
+		}
+		commands[i] = command
+	}
+	return commands, nil
+}
+
+func (s *SDK) SupportsCommand(ctx context.Context, command string) (bool, error) {
+	command = "/" + strings.TrimPrefix(strings.TrimSpace(command), "/")
+	commands, err := s.SupportedCommands(ctx)
+	if err != nil {
+		return false, err
+	}
+	for _, candidate := range commands {
+		if candidate == command {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *SDK) GetGoal(ctx context.Context) (*GoalSnapshot, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetGoal(ctx)
+}
+func (s *SDK) CreateGoal(ctx context.Context, p *GoalCreateParams) (*GoalMutationResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.CreateGoal(ctx, p)
+}
+func (s *SDK) UpdateGoal(ctx context.Context, p *GoalUpdateParams) (*GoalMutationResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.UpdateGoal(ctx, p)
+}
+func (s *SDK) QueueGoal(ctx context.Context, p *GoalCreateParams) (*GoalMutationResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.QueueGoal(ctx, p)
+}
+func (s *SDK) StartQueuedGoal(ctx context.Context) (*GoalMutationResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.StartQueuedGoal(ctx)
+}
+func (s *SDK) ListGoalTemplates(ctx context.Context) ([]GoalTemplateMetadata, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.ListGoalTemplates(ctx)
+}
+func (s *SDK) ClearGoal(ctx context.Context) (*GoalMutationResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.ClearGoal(ctx)
 }
 
 // Stop stops the SDK and terminates the CLI subprocess.

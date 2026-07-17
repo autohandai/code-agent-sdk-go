@@ -188,6 +188,7 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 			}
 			requests <- request
 			result := map[string]interface{}{"success": true}
+			var responseResult interface{} = result
 			switch request.Method {
 			case "autohand.autoresearch.start":
 				result["instruction"] = "Run the next experiment"
@@ -209,11 +210,13 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 				result["candidates"] = []interface{}{}
 				result["bytesFreed"] = 0
 				result["remainingBytes"] = 0
+			case "autohand.goal.listTemplates":
+				responseResult = []interface{}{}
 			}
 			response, _ := json.Marshal(map[string]interface{}{
 				"jsonrpc": "2.0",
 				"id":      request.ID,
-				"result":  result,
+				"result":  responseResult,
 			})
 			transport.handleLine(string(response))
 		}

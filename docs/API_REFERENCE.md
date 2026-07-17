@@ -208,6 +208,16 @@ stopped, err := agent.StopAutoresearch(ctx)
 `AutoresearchLifecycleEvent` represents start/status/pause notifications.
 `AutoresearchOperationEvent` represents history, replay, rescore, compare,
 Pareto, pin, and prune progress. See [the autoresearch guide](./autoresearch.md)
+
+### Slash Commands And Persistent Goals
+
+- `Agent.Command`, `Agent.DeepResearch`, `Agent.Autoresearch`
+- `SDK.StreamCommand`, `SDK.SupportedCommands`, `SDK.SupportsCommand`
+- `GetGoal`, `CreateGoal`, `UpdateGoal`, `QueueGoal`, `StartQueuedGoal`,
+  `ListGoalTemplates`, and `ClearGoal` on `SDK` and `Agent`
+
+Goal budgets use snake-case keys on the JSON-RPC wire. Update budget pointers
+support omitted, set, and explicit-null states.
 for configuration, replay safety, evaluation records, and retention.
 
 ## Core Types

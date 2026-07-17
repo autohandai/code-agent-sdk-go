@@ -323,6 +323,44 @@ func (c *RPCClient) AppendSystemPrompt(ctx context.Context, prompt string) error
 	return err
 }
 
+func (c *RPCClient) GetGoal(ctx context.Context) (*GoalSnapshot, error) {
+	return goalRequest[GoalSnapshot](ctx, c, "autohand.goal.get", map[string]interface{}{})
+}
+func (c *RPCClient) CreateGoal(ctx context.Context, params *GoalCreateParams) (*GoalMutationResult, error) {
+	return goalRequest[GoalMutationResult](ctx, c, "autohand.goal.create", params)
+}
+func (c *RPCClient) UpdateGoal(ctx context.Context, params *GoalUpdateParams) (*GoalMutationResult, error) {
+	return goalRequest[GoalMutationResult](ctx, c, "autohand.goal.update", params)
+}
+func (c *RPCClient) QueueGoal(ctx context.Context, params *GoalCreateParams) (*GoalMutationResult, error) {
+	return goalRequest[GoalMutationResult](ctx, c, "autohand.goal.queue", params)
+}
+func (c *RPCClient) StartQueuedGoal(ctx context.Context) (*GoalMutationResult, error) {
+	return goalRequest[GoalMutationResult](ctx, c, "autohand.goal.startQueued", map[string]interface{}{})
+}
+func (c *RPCClient) ListGoalTemplates(ctx context.Context) ([]GoalTemplateMetadata, error) {
+	return goalRequestValue[[]GoalTemplateMetadata](ctx, c, "autohand.goal.listTemplates", map[string]interface{}{})
+}
+func (c *RPCClient) ClearGoal(ctx context.Context) (*GoalMutationResult, error) {
+	return goalRequest[GoalMutationResult](ctx, c, "autohand.goal.clear", map[string]interface{}{})
+}
+
+func goalRequest[T any](ctx context.Context, client *RPCClient, method string, params interface{}) (*T, error) {
+	result, err := goalRequestValue[T](ctx, client, method, params)
+	return &result, err
+}
+func goalRequestValue[T any](ctx context.Context, client *RPCClient, method string, params interface{}) (T, error) {
+	var result T
+	response, err := client.transport.Request(ctx, method, params)
+	if err != nil {
+		return result, err
+	}
+	if err := json.Unmarshal(response, &result); err != nil {
+		return result, fmt.Errorf("unmarshal %s result: %w", method, err)
+	}
+	return result, nil
+}
+
 // StartAutoresearch initializes or resumes a persisted autoresearch loop.
 func (c *RPCClient) StartAutoresearch(ctx context.Context, params *AutoresearchStartParams) (*AutoresearchStartResult, error) {
 	return autoresearchRequest[AutoresearchStartResult](ctx, c, "autohand.autoresearch.start", params)

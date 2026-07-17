@@ -71,115 +71,12 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 		t.log("copySkillFiles warning: %s", err)
 	}
 
-	args := []string{"--mode", "rpc"}
-
-	if cfg.Unrestricted {
-		args = append(args, "--unrestricted")
-	}
-	if cfg.AutoMode {
-		args = append(args, "--auto-mode")
-	}
-	if cfg.AutoSkill {
-		args = append(args, "--auto-skill")
-	}
-	if cfg.AutoCommit {
-		args = append(args, "-c")
-	}
-	if cfg.ContextCompact {
-		args = append(args, "--context-compact")
-	}
-	if cfg.PersistSession {
-		args = append(args, "--persist-session")
-	}
-	if cfg.SessionID != "" {
-		args = append(args, "--session-id", cfg.SessionID)
-	}
-	if cfg.Resume {
-		args = append(args, "--resume")
-	}
-	if cfg.Continue {
-		args = append(args, "--continue")
-	}
-	if cfg.SessionPath != "" {
-		args = append(args, "--session-path", cfg.SessionPath)
-	}
-	if cfg.AutoSaveInterval > 0 {
-		args = append(args, "--auto-save-interval", fmt.Sprintf("%d", cfg.AutoSaveInterval))
-	}
-	if cfg.AgentsMdEnable {
-		args = append(args, "--agents-md")
-	}
-	if cfg.AgentsMdCreate {
-		args = append(args, "--agents-md-create")
-	}
-	if cfg.AgentsMdPath != "" {
-		args = append(args, "--agents-md-path", cfg.AgentsMdPath)
-	}
-	if cfg.AgentsMdAutoUpdate {
-		args = append(args, "--agents-md-auto-update")
-	}
-	if cfg.MaxTokens > 0 {
-		args = append(args, "--max-tokens", fmt.Sprintf("%d", cfg.MaxTokens))
-	}
-	if cfg.CompressionThreshold > 0 {
-		args = append(args, "--compression-threshold", fmt.Sprintf("%f", cfg.CompressionThreshold))
-	}
-	if cfg.SummarizationThreshold > 0 {
-		args = append(args, "--summarization-threshold", fmt.Sprintf("%f", cfg.SummarizationThreshold))
-	}
-	if len(cfg.Skills) > 0 {
-		names := make([]string, len(cfg.Skills))
-		for i, s := range cfg.Skills {
-			names[i] = s.Name
-		}
-		args = append(args, "--skills", strings.Join(names, ","))
-	}
-	if cfg.MaxIterations > 0 {
-		args = append(args, "--max-iterations", fmt.Sprintf("%d", cfg.MaxIterations))
-	}
-	if cfg.MaxRuntime > 0 {
-		args = append(args, "--max-runtime", fmt.Sprintf("%d", cfg.MaxRuntime))
-	}
-	if cfg.MaxCost > 0 {
-		args = append(args, "--max-cost", fmt.Sprintf("%f", cfg.MaxCost))
-	}
-	if cfg.SysPrompt != "" {
-		args = append(args, "--sys-prompt", cfg.SysPrompt)
-	}
-	if cfg.AppendSysPrompt != "" {
-		args = append(args, "--append-sys-prompt", cfg.AppendSysPrompt)
-	}
-	if cfg.Model != "" {
-		args = append(args, "--model", cfg.Model)
-	}
-	if cfg.Temperature > 0 {
-		args = append(args, "--temperature", fmt.Sprintf("%f", cfg.Temperature))
-	}
-	if cfg.Yolo != "" {
-		args = append(args, "--yolo", cfg.Yolo)
-	}
-	if cfg.YoloTimeout > 0 {
-		args = append(args, "--yolo-timeout", fmt.Sprintf("%d", cfg.YoloTimeout))
-	}
-	for _, dir := range cfg.AddDir {
-		args = append(args, "--add-dir", dir)
-	}
-	for _, dir := range cfg.AdditionalDirectories {
-		args = append(args, "--add-dir", dir)
-	}
-	args = append(args, cfg.ExtraArgs...)
+	args := buildCLIArgs(cfg)
 
 	t.log("Starting CLI: %s", cliPath)
 	t.log("Args: %v", args)
 
-	env := os.Environ()
-	env = append(env, "AUTOHAND_STREAM_TOOL_OUTPUT=1")
-	for k, v := range cfg.Env {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
-	for k, v := range cfg.EnvVars {
-		env = append(env, fmt.Sprintf("%s=%s", k, v))
-	}
+	env := buildCLIEnv(cfg, os.Environ())
 
 	t.cmd = exec.CommandContext(ctx, cliPath, args...)
 	t.cmd.Dir = cwd
@@ -215,6 +112,116 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 
 	time.Sleep(500 * time.Millisecond)
 	return nil
+}
+
+func buildCLIArgs(cfg *Config) []string {
+	args := []string{"--mode", "rpc"}
+	flag := func(ok bool, name string) {
+		if ok {
+			args = append(args, name)
+		}
+	}
+	value := func(name, v string) {
+		if v != "" {
+			args = append(args, name, v)
+		}
+	}
+	flag(cfg.Bare, "--bare")
+	flag(cfg.Unrestricted, "--unrestricted")
+	flag(cfg.AutoMode, "--auto-mode")
+	flag(cfg.AutoSkill, "--auto-skill")
+	flag(cfg.AutoCommit, "-c")
+	if cfg.IdleLogout != nil && !*cfg.IdleLogout {
+		args = append(args, "--no-idle-logout")
+	}
+	flag(cfg.ContextCompact, "--context-compact")
+	flag(cfg.NoContextCompact, "--no-context-compact")
+	flag(cfg.PersistSession, "--persist-session")
+	value("--session-id", cfg.SessionID)
+	flag(cfg.Resume, "--resume")
+	flag(cfg.Continue, "--continue")
+	flag(cfg.Fork, "--fork")
+	value("--session-path", cfg.SessionPath)
+	if cfg.AutoSaveInterval > 0 {
+		value("--auto-save-interval", fmt.Sprint(cfg.AutoSaveInterval))
+	}
+	flag(cfg.NoAgentsMd, "--no-agents-md")
+	flag(cfg.AgentsMdEnable, "--agents-md")
+	flag(cfg.AgentsMdCreate, "--agents-md-create")
+	value("--agents-md-path", cfg.AgentsMdPath)
+	flag(cfg.AgentsMdAutoUpdate, "--agents-md-auto-update")
+	if cfg.MaxTokens > 0 {
+		value("--max-tokens", fmt.Sprint(cfg.MaxTokens))
+	}
+	if cfg.CompressionThreshold > 0 {
+		value("--compression-threshold", fmt.Sprint(cfg.CompressionThreshold))
+	}
+	if cfg.SummarizationThreshold > 0 {
+		value("--summarization-threshold", fmt.Sprint(cfg.SummarizationThreshold))
+	}
+	if len(cfg.Skills) > 0 {
+		names := make([]string, len(cfg.Skills))
+		for i, s := range cfg.Skills {
+			names[i] = s.Name
+		}
+		value("--skills", strings.Join(names, ","))
+	}
+	if len(cfg.SkillSources) > 0 {
+		value("--skill-sources", strings.Join(cfg.SkillSources, ","))
+	}
+	flag(cfg.InstallMissingSkills, "--install-missing-skills")
+	if cfg.MaxIterations > 0 {
+		value("--max-iterations", fmt.Sprint(cfg.MaxIterations))
+	}
+	if cfg.MaxRuntime > 0 {
+		value("--max-runtime", fmt.Sprint(cfg.MaxRuntime))
+	}
+	if cfg.MaxCost > 0 {
+		value("--max-cost", fmt.Sprint(cfg.MaxCost))
+	}
+	value("--display-language", cfg.DisplayLanguage)
+	value("--sys-prompt", cfg.SysPrompt)
+	value("--system-prompt-file", cfg.SystemPromptFile)
+	value("--append-sys-prompt", cfg.AppendSysPrompt)
+	value("--append-system-prompt-file", cfg.AppendSystemPromptFile)
+	value("--mcp-config", cfg.MCPConfig)
+	value("--agents", cfg.Agents)
+	value("--plugin-dir", cfg.PluginDir)
+	value("--model", cfg.Model)
+	if cfg.Temperature > 0 {
+		value("--temperature", fmt.Sprint(cfg.Temperature))
+	}
+	value("--yolo", cfg.Yolo)
+	if cfg.YoloTimeout > 0 {
+		value("--yolo-timeout", fmt.Sprint(cfg.YoloTimeout))
+	}
+	for _, dir := range append(append([]string{}, cfg.AddDir...), cfg.AdditionalDirectories...) {
+		value("--add-dir", dir)
+	}
+	return append(args, cfg.ExtraArgs...)
+}
+
+func buildCLIEnv(cfg *Config, base []string) []string {
+	env := append(append([]string{}, base...), "AUTOHAND_STREAM_TOOL_OUTPUT=1")
+	if cfg.Provider == ProviderAutohandAI {
+		plan := cfg.AutohandAIPlan
+		if plan == "" {
+			plan = "cloud"
+		}
+		env = append(env, "AUTOHAND_AI_PLAN="+plan)
+		if cfg.APIKey != "" {
+			env = append(env, "AUTOHAND_AI_API_KEY="+cfg.APIKey)
+		}
+		if cfg.BaseURL != "" {
+			env = append(env, "AUTOHAND_AI_BASE_URL="+cfg.BaseURL)
+		}
+	}
+	for _, values := range []map[string]string{cfg.Env, cfg.EnvVars} {
+		for k, v := range values {
+			env = append(env, k+"="+v)
+		}
+	}
+	return env
 }
 
 // Stop terminates the CLI subprocess.

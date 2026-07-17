@@ -145,6 +145,19 @@ emit typed lifecycle and ledger-operation events.
 See the [autoresearch guide](./docs/autoresearch.md) and runnable
 [`27-autoresearch-ledger`](./examples/27-autoresearch-ledger) example.
 
+## Commands And Persistent Goals
+
+`Agent.Command`, `Agent.DeepResearch`, and `Agent.Autoresearch` provide validated
+slash-command runs. `SDK.SupportedCommands` discovers the live CLI command set.
+The seven persistent-goal RPCs are available on both `SDK` and `Agent`: get,
+create, update, queue, start queued, list templates, and clear.
+
+`Config` also mirrors current RPC launch flags for bare mode, idle logout,
+session forking, prompt files, display language, MCP/agent/plugin paths,
+AGENTS.md behavior, token thresholds, skill sources, and startup feature flags.
+AutohandAI credentials can be supplied with `AUTOHAND_AI_API_KEY`,
+`AUTOHAND_AI_BASE_URL`, and `AUTOHAND_AI_PLAN`.
+
 ## API Reference
 
 See the `docs/` directory:
