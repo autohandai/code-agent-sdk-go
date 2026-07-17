@@ -174,6 +174,42 @@ content, err := sdk.LoadAgentsMd("./AGENTS.md")
 params := sdk.SetAgentsMdAsPrompt(ctx, &autohand.PromptParams{Message: "Review"}, content)
 ```
 
+### Replayable Autoresearch
+
+Both `Agent` and `SDK` expose the typed persisted experiment lifecycle:
+
+```go
+started, err := agent.StartAutoresearch(ctx, &autohand.AutoresearchStartParams{
+    Objective:      "Reduce benchmark latency",
+    MetricName:     "duration_ms",
+    MetricUnit:     "ms",
+    Direction:      autohand.AutoresearchLower,
+    MeasureCommand: "go test ./...",
+})
+status, err := agent.GetAutoresearchStatus(ctx)
+history, err := agent.GetAutoresearchHistory(ctx)
+replay, err := agent.ReplayAutoresearch(ctx, &autohand.AutoresearchReplayParams{
+    AttemptID: "attempt-1",
+    Evaluator: autohand.AutoresearchEvaluatorOriginal,
+})
+rescored, err := agent.RescoreAutoresearch(ctx,
+    autohand.AutoresearchRescoreAttempt("attempt-1"))
+comparison, err := agent.CompareAutoresearch(ctx, &autohand.AutoresearchCompareParams{
+    LeftAttemptID: "attempt-1", RightAttemptID: "attempt-2",
+})
+pareto, err := agent.GetAutoresearchPareto(ctx)
+pinned, err := agent.PinAutoresearch(ctx, &autohand.AutoresearchPinParams{
+    AttemptID: "attempt-1", Pinned: true,
+})
+preview, err := agent.PruneAutoresearch(ctx, nil)
+stopped, err := agent.StopAutoresearch(ctx)
+```
+
+`AutoresearchLifecycleEvent` represents start/status/pause notifications.
+`AutoresearchOperationEvent` represents history, replay, rescore, compare,
+Pareto, pin, and prune progress. See [the autoresearch guide](./autoresearch.md)
+for configuration, replay safety, evaluation records, and retention.
+
 ## Core Types
 
 ### Config

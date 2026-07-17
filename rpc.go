@@ -11,8 +11,8 @@ import (
 type RPCClient struct {
 	transport *Transport
 
-	mu          sync.Mutex
-	eventQueue  []Event
+	mu           sync.Mutex
+	eventQueue   []Event
 	eventWaiters []chan Event
 }
 
@@ -323,6 +323,74 @@ func (c *RPCClient) AppendSystemPrompt(ctx context.Context, prompt string) error
 	return err
 }
 
+// StartAutoresearch initializes or resumes a persisted autoresearch loop.
+func (c *RPCClient) StartAutoresearch(ctx context.Context, params *AutoresearchStartParams) (*AutoresearchStartResult, error) {
+	return autoresearchRequest[AutoresearchStartResult](ctx, c, "autohand.autoresearch.start", params)
+}
+
+// GetAutoresearchStatus returns current persisted autoresearch state.
+func (c *RPCClient) GetAutoresearchStatus(ctx context.Context) (*AutoresearchStatusResult, error) {
+	return autoresearchRequest[AutoresearchStatusResult](ctx, c, "autohand.autoresearch.status", map[string]interface{}{})
+}
+
+// StopAutoresearch pauses autoresearch without deleting persisted state.
+func (c *RPCClient) StopAutoresearch(ctx context.Context) (*AutoresearchStopResult, error) {
+	return autoresearchRequest[AutoresearchStopResult](ctx, c, "autohand.autoresearch.stop", map[string]interface{}{})
+}
+
+// GetAutoresearchHistory lists persisted attempts.
+func (c *RPCClient) GetAutoresearchHistory(ctx context.Context) (*AutoresearchHistoryResult, error) {
+	return autoresearchRequest[AutoresearchHistoryResult](ctx, c, "autohand.autoresearch.history", map[string]interface{}{})
+}
+
+// ReplayAutoresearch re-evaluates a candidate in an isolated worktree.
+func (c *RPCClient) ReplayAutoresearch(ctx context.Context, params *AutoresearchReplayParams) (*AutoresearchReplayResult, error) {
+	return autoresearchRequest[AutoresearchReplayResult](ctx, c, "autohand.autoresearch.replay", params)
+}
+
+// RescoreAutoresearch reapplies current decision policy to persisted measurements.
+func (c *RPCClient) RescoreAutoresearch(ctx context.Context, params *AutoresearchRescoreParams) (*AutoresearchRescoreResult, error) {
+	if err := params.Validate(); err != nil {
+		return nil, err
+	}
+	return autoresearchRequest[AutoresearchRescoreResult](ctx, c, "autohand.autoresearch.rescore", params)
+}
+
+// CompareAutoresearch compares persisted evidence for two attempts.
+func (c *RPCClient) CompareAutoresearch(ctx context.Context, params *AutoresearchCompareParams) (*AutoresearchCompareResult, error) {
+	return autoresearchRequest[AutoresearchCompareResult](ctx, c, "autohand.autoresearch.compare", params)
+}
+
+// GetAutoresearchPareto returns the current constraint-passing Pareto frontier.
+func (c *RPCClient) GetAutoresearchPareto(ctx context.Context) (*AutoresearchParetoResult, error) {
+	return autoresearchRequest[AutoresearchParetoResult](ctx, c, "autohand.autoresearch.pareto", map[string]interface{}{})
+}
+
+// PinAutoresearch pins or unpins a candidate's replay artifacts.
+func (c *RPCClient) PinAutoresearch(ctx context.Context, params *AutoresearchPinParams) (*AutoresearchPinResult, error) {
+	return autoresearchRequest[AutoresearchPinResult](ctx, c, "autohand.autoresearch.pin", params)
+}
+
+// PruneAutoresearch previews or applies artifact retention.
+func (c *RPCClient) PruneAutoresearch(ctx context.Context, params *AutoresearchPruneParams) (*AutoresearchPruneResult, error) {
+	if params == nil {
+		params = &AutoresearchPruneParams{}
+	}
+	return autoresearchRequest[AutoresearchPruneResult](ctx, c, "autohand.autoresearch.prune", params)
+}
+
+func autoresearchRequest[T any](ctx context.Context, client *RPCClient, method string, params interface{}) (*T, error) {
+	response, err := client.transport.Request(ctx, method, params)
+	if err != nil {
+		return nil, err
+	}
+	var result T
+	if err := json.Unmarshal(response, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal %s result: %w", method, err)
+	}
+	return &result, nil
+}
+
 // Request sends a custom RPC request.
 func (c *RPCClient) Request(ctx context.Context, method string, params interface{}) (json.RawMessage, error) {
 	return c.transport.Request(ctx, method, params)
@@ -477,5 +545,28 @@ func (c *RPCClient) setupNotifications() {
 		json.Unmarshal(params, &e)
 		e.Type = "error"
 		c.queueEvent(e)
+	})
+
+	queueAutoresearchLifecycle := func(phase AutoresearchPhase) func(json.RawMessage) {
+		return func(params json.RawMessage) {
+			var event AutoresearchLifecycleEvent
+			if err := json.Unmarshal(params, &event); err != nil {
+				return
+			}
+			event.Type = "autoresearch"
+			event.Phase = phase
+			c.queueEvent(event)
+		}
+	}
+	c.transport.OnNotification("autohand.autoresearch.start", queueAutoresearchLifecycle(AutoresearchPhaseStart))
+	c.transport.OnNotification("autohand.autoresearch.status", queueAutoresearchLifecycle(AutoresearchPhaseStatus))
+	c.transport.OnNotification("autohand.autoresearch.pause", queueAutoresearchLifecycle(AutoresearchPhasePause))
+	c.transport.OnNotification("autohand.autoresearch.event", func(params json.RawMessage) {
+		var event AutoresearchOperationEvent
+		if err := json.Unmarshal(params, &event); err != nil {
+			return
+		}
+		event.Type = "autoresearch"
+		c.queueEvent(event)
 	})
 }

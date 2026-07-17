@@ -40,6 +40,7 @@ func NewTransport(cfg *Config) *Transport {
 	return &Transport{
 		callbacks: make(map[int]chan transportResponse),
 		notify:    make(map[string]func(json.RawMessage)),
+		nextID:    1,
 		debug:     cfg.Debug,
 		timeout:   timeout,
 	}

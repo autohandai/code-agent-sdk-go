@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Testing SDK Control Features...\n")
+	fmt.Print("Testing SDK Control Features...\n\n")
 
 	sdk := autohand.NewSDK(&autohand.Config{})
 	fmt.Println("SDK initialized with control options")
@@ -41,7 +41,7 @@ func main() {
 
 	// Test that the RPC client has the new methods
 	fmt.Println("\nTesting RPC Client methods...")
-	client := sdk.client
+	client := autohand.NewRPCClient(&autohand.Config{})
 	clientType := reflect.TypeOf(client)
 	rpcMethods := []string{
 		"SetPermissionMode", "SetPlanMode", "SetModel", "SetMaxThinkingTokens",

@@ -50,6 +50,7 @@ type transportResponse struct {
 type ProviderName string
 
 const (
+	ProviderAutohandAI ProviderName = "autohandai"
 	ProviderOpenRouter ProviderName = "openrouter"
 	ProviderOllama     ProviderName = "ollama"
 	ProviderLlamacpp   ProviderName = "llamacpp"
@@ -162,10 +163,10 @@ const (
 
 // Config holds all SDK configuration.
 type Config struct {
-	CWD       string
-	CLIPath   string
-	Debug     bool
-	Timeout   int // milliseconds
+	CWD     string
+	CLIPath string
+	Debug   bool
+	Timeout int // milliseconds
 
 	Model         string
 	FallbackModel string
@@ -183,32 +184,32 @@ type Config struct {
 	YoloTimeout    int
 	PlanMode       bool
 
-	AutoMode    bool
+	AutoMode     bool
 	Unrestricted bool
-	AutoCommit  bool
-	AutoSkill   bool
+	AutoCommit   bool
+	AutoSkill    bool
 
 	MaxIterations int
 	MaxRuntime    int
 	MaxCost       float64
 
-	SysPrompt        string
-	AppendSysPrompt  string
-	Instructions     string
+	SysPrompt       string
+	AppendSysPrompt string
+	Instructions    string
 
-	Skills      []SkillRef
-	SkillRefs   []SkillRef
+	Skills    []SkillRef
+	SkillRefs []SkillRef
 
-	ContextCompact bool
-	MaxTokens      int
-	CompressionThreshold    float64
-	SummarizationThreshold  float64
+	ContextCompact         bool
+	MaxTokens              int
+	CompressionThreshold   float64
+	SummarizationThreshold float64
 
-	PersistSession  bool
-	SessionID       string
-	Resume          bool
-	Continue        bool
-	SessionPath     string
+	PersistSession   bool
+	SessionID        string
+	Resume           bool
+	Continue         bool
+	SessionPath      string
 	AutoSaveInterval int
 
 	AgentsMdEnable     bool
@@ -220,7 +221,7 @@ type Config struct {
 	AddDir                []string
 	ExtraArgs             []string
 
-	Env    map[string]string
+	Env     map[string]string
 	EnvVars map[string]string
 
 	Thinking string
@@ -245,13 +246,13 @@ type Config struct {
 	ChatGPTAccessToken string
 	ChatGPTAccountID   string
 
-	AzureAuthMethod    string
-	AzureTenantID      string
-	AzureClientID      string
-	AzureClientSecret  string
-	AzureResourceName  string
+	AzureAuthMethod     string
+	AzureTenantID       string
+	AzureClientID       string
+	AzureClientSecret   string
+	AzureResourceName   string
 	AzureDeploymentName string
-	AzureAPIVersion    string
+	AzureAPIVersion     string
 
 	Port int
 
@@ -299,15 +300,15 @@ type SkillSettings struct {
 
 // AgentsMdSettings holds AGENTS.md configuration.
 type AgentsMdSettings struct {
-	Enable           bool
-	Enabled          bool
-	Create           bool
-	CreateDefault    bool
-	Path             string
-	AutoUpdate       bool
-	IncludeTechStack bool
-	IncludeCommands  bool
-	IncludeSkills    bool
+	Enable             bool
+	Enabled            bool
+	Create             bool
+	CreateDefault      bool
+	Path               string
+	AutoUpdate         bool
+	IncludeTechStack   bool
+	IncludeCommands    bool
+	IncludeSkills      bool
 	IncludeConventions bool
 }
 
@@ -354,6 +355,20 @@ const (
 	HookEventAutomodeCancel     HookEvent = "automode:cancel"
 	HookEventAutomodeComplete   HookEvent = "automode:complete"
 	HookEventAutomodeError      HookEvent = "automode:error"
+
+	HookEventAutoresearchStart    HookEvent = "autoresearch:start"
+	HookEventAutoresearchPause    HookEvent = "autoresearch:pause"
+	HookEventAutoresearchInit     HookEvent = "autoresearch:init"
+	HookEventAutoresearchBefore   HookEvent = "autoresearch:before"
+	HookEventAutoresearchRun      HookEvent = "autoresearch:run"
+	HookEventAutoresearchAfter    HookEvent = "autoresearch:after"
+	HookEventAutoresearchLog      HookEvent = "autoresearch:log"
+	HookEventAutoresearchDecision HookEvent = "autoresearch:decision"
+	HookEventAutoresearchReplay   HookEvent = "autoresearch:replay"
+	HookEventAutoresearchRescore  HookEvent = "autoresearch:rescore"
+	HookEventAutoresearchPrune    HookEvent = "autoresearch:prune"
+	HookEventAutoresearchComplete HookEvent = "autoresearch:complete"
+	HookEventAutoresearchError    HookEvent = "autoresearch:error"
 
 	HookEventPreLearn  HookEvent = "pre-learn"
 	HookEventPostLearn HookEvent = "post-learn"
@@ -660,13 +675,13 @@ func (e FileModifiedEvent) eventType() string { return "file_modified" }
 
 // PermissionRequestEvent is emitted when the agent requests permission.
 type PermissionRequestEvent struct {
-	Type        string              `json:"type"`
-	RequestID   string              `json:"requestId"`
-	Tool        string              `json:"tool"`
-	Description string              `json:"description"`
-	Context     PermissionContext   `json:"context"`
-	Options     []string            `json:"options,omitempty"`
-	Timestamp   string              `json:"timestamp"`
+	Type        string            `json:"type"`
+	RequestID   string            `json:"requestId"`
+	Tool        string            `json:"tool"`
+	Description string            `json:"description"`
+	Context     PermissionContext `json:"context"`
+	Options     []string          `json:"options,omitempty"`
+	Timestamp   string            `json:"timestamp"`
 }
 
 func (e PermissionRequestEvent) eventType() string { return "permission_request" }
@@ -695,6 +710,9 @@ func DetectProviderFromModel(model string) ProviderName {
 		return ProviderOpenRouter
 	}
 	m := strings.ToLower(model)
+	if m == "fantail" || m == "moa" || strings.HasPrefix(m, "autohandai/") {
+		return ProviderAutohandAI
+	}
 	if strings.Contains(m, "glm") || strings.Contains(m, "z-ai") {
 		return ProviderZai
 	}

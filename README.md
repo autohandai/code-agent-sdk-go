@@ -29,6 +29,9 @@ The Agent SDK is available in multiple beta language packages. Use the same CLI-
 - [Python](https://github.com/autohandai/code-agent-sdk-python) - async Python package with `async for` event streams and typed Pydantic models.
 - [Java](https://github.com/autohandai/code-agent-sdk-java) - Java 21 records, sealed events, and virtual-thread-ready APIs.
 - [Swift](https://github.com/autohandai/code-agent-sdk-swift) - SwiftPM package with `Agent`, `Runner`, async streams, tools, hooks, and permissions.
+- [Rust](https://github.com/autohandai/code-agent-sdk-rust) - async Rust crate with Tokio, typed events, and stream-based runs.
+- [C++](https://github.com/autohandai/code-agent-sdk-cpp) - modern C++20 package with CMake targets and typed event callbacks.
+- [C#](https://github.com/autohandai/code-agent-sdk-csharp) - .NET package with `IAsyncEnumerable`, `CancellationToken`, and `System.Text.Json`.
 
 ## Installation
 
@@ -132,6 +135,16 @@ for event := range events {
 
 See `docs/configuration.md` for all options.
 
+## Replayable Autoresearch
+
+The SDK exposes the current CLI autoresearch lifecycle as typed Go methods:
+`StartAutoresearch`, `GetAutoresearchStatus`, `StopAutoresearch`, history,
+replay, rescore, compare, Pareto, pin, and safe pruning. Streaming runs also
+emit typed lifecycle and ledger-operation events.
+
+See the [autoresearch guide](./docs/autoresearch.md) and runnable
+[`27-autoresearch-ledger`](./examples/27-autoresearch-ledger) example.
+
 ## API Reference
 
 See the `docs/` directory:
@@ -146,6 +159,7 @@ See the `docs/` directory:
 - `docs/plan-mode.md` - read-only planning and gated implementation.
 - `docs/memory.md` - CLI memory behavior through SDK event streams.
 - `docs/sdlc-workflows.md` - discovery, gated implementation, and release-readiness flows.
+- `docs/autoresearch.md` - persisted experiments, replay, rescoring, Pareto analysis, pinning, and pruning.
 
 ## Examples
 

@@ -278,6 +278,86 @@ func (s *SDK) ReconnectMCPServer(ctx context.Context, serverName string) error {
 	return s.client.ReconnectMCPServer(ctx, serverName)
 }
 
+// StartAutoresearch initializes or resumes a persisted autoresearch loop.
+func (s *SDK) StartAutoresearch(ctx context.Context, params *AutoresearchStartParams) (*AutoresearchStartResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.StartAutoresearch(ctx, params)
+}
+
+// GetAutoresearchStatus returns current persisted autoresearch state.
+func (s *SDK) GetAutoresearchStatus(ctx context.Context) (*AutoresearchStatusResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetAutoresearchStatus(ctx)
+}
+
+// StopAutoresearch pauses autoresearch without deleting persisted state.
+func (s *SDK) StopAutoresearch(ctx context.Context) (*AutoresearchStopResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.StopAutoresearch(ctx)
+}
+
+// GetAutoresearchHistory lists persisted attempts.
+func (s *SDK) GetAutoresearchHistory(ctx context.Context) (*AutoresearchHistoryResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetAutoresearchHistory(ctx)
+}
+
+// ReplayAutoresearch re-evaluates a candidate in an isolated worktree.
+func (s *SDK) ReplayAutoresearch(ctx context.Context, params *AutoresearchReplayParams) (*AutoresearchReplayResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.ReplayAutoresearch(ctx, params)
+}
+
+// RescoreAutoresearch reapplies current policy to persisted measurements.
+func (s *SDK) RescoreAutoresearch(ctx context.Context, params *AutoresearchRescoreParams) (*AutoresearchRescoreResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.RescoreAutoresearch(ctx, params)
+}
+
+// CompareAutoresearch compares persisted evidence for two attempts.
+func (s *SDK) CompareAutoresearch(ctx context.Context, params *AutoresearchCompareParams) (*AutoresearchCompareResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.CompareAutoresearch(ctx, params)
+}
+
+// GetAutoresearchPareto returns the current constraint-passing Pareto frontier.
+func (s *SDK) GetAutoresearchPareto(ctx context.Context) (*AutoresearchParetoResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetAutoresearchPareto(ctx)
+}
+
+// PinAutoresearch pins or unpins a candidate's replay artifacts.
+func (s *SDK) PinAutoresearch(ctx context.Context, params *AutoresearchPinParams) (*AutoresearchPinResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.PinAutoresearch(ctx, params)
+}
+
+// PruneAutoresearch previews or applies artifact retention.
+func (s *SDK) PruneAutoresearch(ctx context.Context, params *AutoresearchPruneParams) (*AutoresearchPruneResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.PruneAutoresearch(ctx, params)
+}
+
 // SetMCPServers sets MCP server configurations.
 func (s *SDK) SetMCPServers(ctx context.Context, servers map[string]MCPServerConfig) error {
 	if err := s.ensureStarted(ctx); err != nil {

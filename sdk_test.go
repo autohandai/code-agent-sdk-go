@@ -14,6 +14,9 @@ func TestDetectProviderFromModel(t *testing.T) {
 		expected ProviderName
 	}{
 		{"", ProviderOpenRouter},
+		{"fantail", ProviderAutohandAI},
+		{"moa", ProviderAutohandAI},
+		{"autohandai/moa", ProviderAutohandAI},
 		{"gpt-4", ProviderOpenAI},
 		{"claude-sonnet", ProviderOpenRouter},
 		{"deepseek-chat", ProviderDeepSeek},

@@ -55,19 +55,21 @@
 //
 // The SDK emits typed events during streaming. Use a type switch to handle them:
 //
-//	- AgentStartEvent
-//	- AgentEndEvent
-//	- TurnStartEvent
-//	- TurnEndEvent
-//	- MessageStartEvent
-//	- MessageUpdateEvent
-//	- MessageEndEvent
-//	- ToolStartEvent
-//	- ToolUpdateEvent
-//	- ToolEndEvent
-//	- FileModifiedEvent
-//	- PermissionRequestEvent
-//	- ErrorEvent
+//   - AgentStartEvent
+//   - AgentEndEvent
+//   - TurnStartEvent
+//   - TurnEndEvent
+//   - MessageStartEvent
+//   - MessageUpdateEvent
+//   - MessageEndEvent
+//   - ToolStartEvent
+//   - ToolUpdateEvent
+//   - ToolEndEvent
+//   - FileModifiedEvent
+//   - PermissionRequestEvent
+//   - AutoresearchLifecycleEvent
+//   - AutoresearchOperationEvent
+//   - ErrorEvent
 //
 // See the examples/ directory for complete, runnable programs.
 package autohand

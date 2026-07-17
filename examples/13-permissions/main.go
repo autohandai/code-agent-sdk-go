@@ -16,7 +16,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	fmt.Println("=== Permission Modes Demo ===\n")
+	fmt.Print("=== Permission Modes Demo ===\n\n")
 
 	modes := []autohand.PermissionMode{
 		autohand.PermissionInteractive,

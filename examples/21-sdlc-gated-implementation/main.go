@@ -71,7 +71,7 @@ func main() {
 		"Return numbered steps with test coverage and rollback notes.",
 	}
 
-	fmt.Println("--- planning ---\n")
+	fmt.Print("--- planning ---\n\n")
 	streamPrompt(ctx, sdk, planPrompt[0]+"\n"+planPrompt[1]+"\n"+planPrompt[2]+"\n"+planPrompt[3])
 
 	if !executePlan {
@@ -92,7 +92,7 @@ func main() {
 		"Summarize changed files and verification results.",
 	}
 
-	fmt.Println("\n--- implementation ---\n")
+	fmt.Print("\n--- implementation ---\n\n")
 	streamPrompt(ctx, sdk, executePrompt[0]+"\n"+executePrompt[1]+"\n"+executePrompt[2]+"\n"+executePrompt[3])
 
 	if err := sdk.Close(); err != nil {

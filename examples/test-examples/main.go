@@ -28,7 +28,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("=== Validating Go Examples ===\n")
+	fmt.Print("=== Validating Go Examples ===\n\n")
 	fmt.Printf("Found %d example directories\n\n", len(exampleDirs))
 
 	passed := 0

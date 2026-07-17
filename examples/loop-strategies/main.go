@@ -21,7 +21,7 @@ func main() {
 
 	fmt.Println("=== Loop Strategies Demo ===")
 	fmt.Println("Note: Loop strategies are configured on the CLI side.")
-	fmt.Println("The SDK passes configuration to the CLI.\n")
+	fmt.Print("The SDK passes configuration to the CLI.\n\n")
 
 	sdk := autohand.NewSDK(&autohand.Config{})
 

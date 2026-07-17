@@ -8,9 +8,9 @@ import (
 
 // LineReader reads newline-delimited lines from a stream.
 type LineReader struct {
-	reader  *bufio.Reader
-	lines   chan string
-	done    chan struct{}
+	reader    *bufio.Reader
+	lines     chan string
+	done      chan struct{}
 	closeOnce sync.Once
 }
 

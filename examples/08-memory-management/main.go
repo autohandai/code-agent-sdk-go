@@ -63,7 +63,8 @@ func streamPromptWithLogging(ctx context.Context, sdk *autohand.SDK, prompt stri
 func main() {
 	ctx := context.Background()
 
-	fmt.Println("=== Autohand SDK Memory Management Example ===\n")
+	fmt.Println("=== Autohand SDK Memory Management Example ===")
+	fmt.Println()
 
 	// Phase 1: Save a preference to memory
 	saveSdk := autohand.NewSDK(&autohand.Config{})

@@ -15,16 +15,16 @@ type Run struct {
 	sdk    *SDK
 	params *PromptParams
 
-	mu         sync.Mutex
-	events     []Event
-	waiters    []chan struct{}
-	completed  bool
-	aborted    bool
-	runErr     error
-	text       string
-	started    bool
-	startOnce  sync.Once
-	resultCh   chan RunResult
+	mu        sync.Mutex
+	events    []Event
+	waiters   []chan struct{}
+	completed bool
+	aborted   bool
+	runErr    error
+	text      string
+	started   bool
+	startOnce sync.Once
+	resultCh  chan RunResult
 }
 
 func newRun(sdk *SDK, params *PromptParams, id string) *Run {
@@ -312,6 +312,61 @@ func (a *Agent) DenyPermission(ctx context.Context, requestID string, scope Deci
 // PermissionResponse responds to a permission request.
 func (a *Agent) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	return a.sdk.PermissionResponse(ctx, requestID, decision)
+}
+
+// Autoresearch starts a high-level slash-command run for the objective.
+func (a *Agent) Autoresearch(ctx context.Context, objective string, opts *PromptParams) (*Run, error) {
+	return a.Send(ctx, "/autoresearch "+objective, opts)
+}
+
+// StartAutoresearch initializes or resumes a persisted autoresearch loop.
+func (a *Agent) StartAutoresearch(ctx context.Context, params *AutoresearchStartParams) (*AutoresearchStartResult, error) {
+	return a.sdk.StartAutoresearch(ctx, params)
+}
+
+// GetAutoresearchStatus returns current persisted autoresearch state.
+func (a *Agent) GetAutoresearchStatus(ctx context.Context) (*AutoresearchStatusResult, error) {
+	return a.sdk.GetAutoresearchStatus(ctx)
+}
+
+// StopAutoresearch pauses autoresearch without deleting persisted state.
+func (a *Agent) StopAutoresearch(ctx context.Context) (*AutoresearchStopResult, error) {
+	return a.sdk.StopAutoresearch(ctx)
+}
+
+// GetAutoresearchHistory lists persisted attempts.
+func (a *Agent) GetAutoresearchHistory(ctx context.Context) (*AutoresearchHistoryResult, error) {
+	return a.sdk.GetAutoresearchHistory(ctx)
+}
+
+// ReplayAutoresearch re-evaluates a candidate in an isolated worktree.
+func (a *Agent) ReplayAutoresearch(ctx context.Context, params *AutoresearchReplayParams) (*AutoresearchReplayResult, error) {
+	return a.sdk.ReplayAutoresearch(ctx, params)
+}
+
+// RescoreAutoresearch reapplies current policy to persisted measurements.
+func (a *Agent) RescoreAutoresearch(ctx context.Context, params *AutoresearchRescoreParams) (*AutoresearchRescoreResult, error) {
+	return a.sdk.RescoreAutoresearch(ctx, params)
+}
+
+// CompareAutoresearch compares persisted evidence for two attempts.
+func (a *Agent) CompareAutoresearch(ctx context.Context, params *AutoresearchCompareParams) (*AutoresearchCompareResult, error) {
+	return a.sdk.CompareAutoresearch(ctx, params)
+}
+
+// GetAutoresearchPareto returns the current constraint-passing Pareto frontier.
+func (a *Agent) GetAutoresearchPareto(ctx context.Context) (*AutoresearchParetoResult, error) {
+	return a.sdk.GetAutoresearchPareto(ctx)
+}
+
+// PinAutoresearch pins or unpins a candidate's replay artifacts.
+func (a *Agent) PinAutoresearch(ctx context.Context, params *AutoresearchPinParams) (*AutoresearchPinResult, error) {
+	return a.sdk.PinAutoresearch(ctx, params)
+}
+
+// PruneAutoresearch previews or applies artifact retention.
+func (a *Agent) PruneAutoresearch(ctx context.Context, params *AutoresearchPruneParams) (*AutoresearchPruneResult, error) {
+	return a.sdk.PruneAutoresearch(ctx, params)
 }
 
 // RunJson runs a prompt and returns the result parsed as JSON.

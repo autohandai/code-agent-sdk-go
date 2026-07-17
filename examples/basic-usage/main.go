@@ -25,7 +25,7 @@ func main() {
 	}
 	fmt.Println("SDK started")
 
-	fmt.Println("Sending prompt: \"Hello, Autohand!\"\n")
+	fmt.Print("Sending prompt: \"Hello, Autohand!\"\n\n")
 	events, err := sdk.StreamPrompt(ctx, &autohand.PromptParams{Message: "Hello, Autohand!"})
 	if err != nil {
 		log.Fatalf("stream prompt: %v", err)
