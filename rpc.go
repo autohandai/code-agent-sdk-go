@@ -134,6 +134,14 @@ func (c *RPCClient) ResumeAutomode(ctx context.Context) (*AutomodeResumeResult, 
 	return rpcRequest[AutomodeResumeResult](ctx, c, "autohand.automode.resume", map[string]interface{}{})
 }
 
+// CancelAutomode cancels the active auto-mode session.
+func (c *RPCClient) CancelAutomode(ctx context.Context, params *AutomodeCancelParams) (*AutomodeCancelResult, error) {
+	if params == nil {
+		params = &AutomodeCancelParams{}
+	}
+	return rpcRequest[AutomodeCancelResult](ctx, c, "autohand.automode.cancel", params)
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{

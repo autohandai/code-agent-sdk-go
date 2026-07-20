@@ -168,3 +168,19 @@ func TestAutomodeResumeExactWireAndResult(t *testing.T) {
 	}
 	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.resume", map[string]interface{}{})
 }
+
+func TestAutomodeCancelExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	reason := "operator requested"
+
+	result, err := client.CancelAutomode(ctx, &AutomodeCancelParams{Reason: &reason})
+	if err != nil || !result.Success || result.Error != nil {
+		t.Fatalf("CancelAutomode() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.cancel", map[string]interface{}{
+		"reason": "operator requested",
+	})
+}

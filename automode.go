@@ -66,3 +66,14 @@ type AutomodeResumeResult struct {
 	Success bool    `json:"success"`
 	Error   *string `json:"error,omitempty"`
 }
+
+// AutomodeCancelParams supplies optional caller context for cancellation.
+type AutomodeCancelParams struct {
+	Reason *string `json:"reason,omitempty"`
+}
+
+// AutomodeCancelResult reports the business result of a cancellation request.
+type AutomodeCancelResult struct {
+	Success bool    `json:"success"`
+	Error   *string `json:"error,omitempty"`
+}

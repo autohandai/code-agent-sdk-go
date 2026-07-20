@@ -137,6 +137,7 @@ started, err := sdk.StartAutomode(ctx, &autohand.AutomodeStartParams{Prompt: "Sh
 status, err := sdk.GetAutomodeStatus(ctx)
 paused, err := sdk.PauseAutomode(ctx)
 resumed, err := sdk.ResumeAutomode(ctx)
+cancelled, err := sdk.CancelAutomode(ctx, &autohand.AutomodeCancelParams{})
 ```
 
 `Start` skips the permission-mode RPC for the default interactive mode.

@@ -407,6 +407,14 @@ func (s *SDK) ResumeAutomode(ctx context.Context) (*AutomodeResumeResult, error)
 	return s.client.ResumeAutomode(ctx)
 }
 
+// CancelAutomode cancels the active auto-mode session.
+func (s *SDK) CancelAutomode(ctx context.Context, params *AutomodeCancelParams) (*AutomodeCancelResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.CancelAutomode(ctx, params)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {

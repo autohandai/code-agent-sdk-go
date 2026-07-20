@@ -42,3 +42,8 @@ remain typed results with `Success == false` and an optional `Error`.
 
 Call `ResumeAutomode(ctx)` to continue a paused session. The typed result
 reports business success or an optional CLI error.
+
+## Cancel Auto-Mode
+
+Call `CancelAutomode(ctx, params)` to stop the active session. `Reason` is
+optional; the typed result reports business success or an optional CLI error.
