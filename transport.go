@@ -3,6 +3,7 @@ package autohand
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,13 @@ import (
 	"strings"
 	"sync"
 	"time"
+)
+
+var (
+	// ErrTransportNotStarted is returned when a request is made before Start.
+	ErrTransportNotStarted = errors.New("transport has not been started")
+	// ErrTransportClosed is returned when the CLI closes its response stream.
+	ErrTransportClosed = errors.New("transport response stream closed")
 )
 
 // Transport manages the CLI subprocess and JSON-RPC communication.
@@ -48,6 +56,9 @@ func NewTransport(cfg *Config) *Transport {
 
 // Start spawns the CLI subprocess.
 func (t *Transport) Start(ctx context.Context, cfg *Config) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	cliPath := cfg.CLIPath
 	if cliPath == "" {
 		var err error
@@ -78,7 +89,8 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 
 	env := buildCLIEnv(cfg, os.Environ())
 
-	t.cmd = exec.CommandContext(ctx, cliPath, args...)
+	// Request contexts bound startup work, not the lifetime of the reusable CLI process.
+	t.cmd = exec.Command(cliPath, args...)
 	t.cmd.Dir = cwd
 	t.cmd.Env = env
 
@@ -101,16 +113,15 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 	}
 
 	t.lineReader = NewLineReader(t.stdout)
-	go t.readLoop()
+	go t.readLoop(t.lineReader)
 
-	go func() {
-		data, _ := io.ReadAll(t.stderr)
+	go func(stderr io.Reader) {
+		data, _ := io.ReadAll(stderr)
 		if len(data) > 0 {
 			t.log("STDERR: %s", string(data))
 		}
-	}()
+	}(t.stderr)
 
-	time.Sleep(500 * time.Millisecond)
 	return nil
 }
 
@@ -226,30 +237,63 @@ func buildCLIEnv(cfg *Config, base []string) []string {
 
 // Stop terminates the CLI subprocess.
 func (t *Transport) Stop() error {
-	if t.cmd == nil || t.cmd.Process == nil {
+	t.mu.Lock()
+	cmd := t.cmd
+	stdin := t.stdin
+	lineReader := t.lineReader
+	t.mu.Unlock()
+	if cmd == nil || cmd.Process == nil {
 		return nil
 	}
 	t.log("Stopping CLI process")
-	if t.stdin != nil {
-		t.stdin.Close()
+	if stdin != nil {
+		_ = stdin.Close()
 	}
-	if t.lineReader != nil {
-		t.lineReader.Close()
+	if lineReader != nil {
+		lineReader.Close()
 	}
-	if err := t.cmd.Process.Signal(os.Interrupt); err != nil {
-		t.cmd.Process.Kill()
+	if err := cmd.Process.Signal(os.Interrupt); err != nil {
+		_ = cmd.Process.Kill()
 	}
-	t.cmd.Wait()
+	waited := make(chan error, 1)
+	go func() { waited <- cmd.Wait() }()
+	var waitErr error
+	select {
+	case waitErr = <-waited:
+	case <-time.After(2 * time.Second):
+		_ = cmd.Process.Kill()
+		waitErr = <-waited
+	}
+	t.mu.Lock()
+	if t.cmd == cmd {
+		t.cmd = nil
+		t.stdin = nil
+		t.stdout = nil
+		t.stderr = nil
+		t.lineReader = nil
+	}
+	t.mu.Unlock()
+	if waitErr != nil {
+		if exitErr, ok := waitErr.(*exec.ExitError); ok && exitErr.ProcessState != nil {
+			return nil
+		}
+		return fmt.Errorf("wait for CLI: %w", waitErr)
+	}
 	return nil
 }
 
 // Request sends a JSON-RPC request and waits for the response.
 func (t *Transport) Request(ctx context.Context, method string, params interface{}) (json.RawMessage, error) {
 	t.mu.Lock()
+	if t.stdin == nil || (t.cmd != nil && (t.cmd.Process == nil || t.cmd.ProcessState != nil)) {
+		t.mu.Unlock()
+		return nil, ErrTransportNotStarted
+	}
 	id := t.nextID
 	t.nextID++
 	ch := make(chan transportResponse, 1)
 	t.callbacks[id] = ch
+	stdin := t.stdin
 	t.mu.Unlock()
 
 	defer func() {
@@ -273,14 +317,18 @@ func (t *Transport) Request(ctx context.Context, method string, params interface
 
 	t.log("Sending request: %s (id: %d)", method, id)
 
-	if _, err := t.stdin.Write(data); err != nil {
+	if _, err := stdin.Write(data); err != nil {
 		return nil, fmt.Errorf("write request: %w", err)
 	}
 
 	select {
 	case resp := <-ch:
 		if resp.err != nil {
-			return nil, fmt.Errorf("RPC error: %s", resp.err.Error())
+			var rpcErr *jsonRPCError
+			if errors.As(resp.err, &rpcErr) {
+				return nil, fmt.Errorf("RPC error: %w", rpcErr)
+			}
+			return nil, resp.err
 		}
 		return resp.result, nil
 	case <-ctx.Done():
@@ -306,16 +354,34 @@ func (t *Transport) OffNotification(method string) {
 
 // IsRunning returns whether the process is running.
 func (t *Transport) IsRunning() bool {
-	return t.cmd != nil && t.cmd.Process != nil
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.cmd != nil && t.cmd.Process != nil && t.cmd.ProcessState == nil
 }
 
-func (t *Transport) readLoop() {
+func (t *Transport) readLoop(reader *LineReader) {
 	for {
-		line, err := t.lineReader.ReadLine()
+		line, err := reader.ReadLine()
 		if err != nil {
+			t.failCallbacks(reader, ErrTransportClosed)
 			return
 		}
 		t.handleLine(line)
+	}
+}
+
+func (t *Transport) failCallbacks(reader *LineReader, cause error) {
+	t.mu.Lock()
+	if t.lineReader != reader {
+		t.mu.Unlock()
+		return
+	}
+	callbacks := t.callbacks
+	t.callbacks = make(map[int]chan transportResponse)
+	t.mu.Unlock()
+
+	for _, callback := range callbacks {
+		callback <- transportResponse{err: cause}
 	}
 }
 
@@ -331,7 +397,11 @@ func (t *Transport) handleLine(line string) {
 		ch, ok := t.callbacks[resp.ID]
 		t.mu.Unlock()
 		if ok {
-			ch <- transportResponse{result: resp.Result, err: resp.Error}
+			response := transportResponse{result: resp.Result}
+			if resp.Error != nil {
+				response.err = resp.Error
+			}
+			ch <- response
 		}
 		return
 	}

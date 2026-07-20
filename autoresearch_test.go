@@ -97,23 +97,18 @@ func TestAutoresearchRPCMethods(t *testing.T) {
 
 func TestAutoresearchNotificationsMapToTypedEvents(t *testing.T) {
 	client := NewRPCClient(&Config{})
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	events := client.Events(ctx)
 	client.transport.handleLine(`{"jsonrpc":"2.0","method":"autohand.autoresearch.status","params":{"active":true,"goal":"Reduce latency","iteration":2,"maxIterations":8,"runsLogged":3,"statusText":"Auto-research active","subcommand":"status","timestamp":"2026-07-17T00:00:00Z"}}`)
 	client.transport.handleLine(`{"jsonrpc":"2.0","method":"autohand.autoresearch.event","params":{"operation":"replay","phase":"completed","attemptId":"attempt-1","success":true,"timestamp":"2026-07-17T00:00:01Z"}}`)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	first, err := client.nextEvent(ctx)
-	if err != nil {
-		t.Fatalf("next lifecycle event: %v", err)
-	}
+	first := <-events
 	lifecycle, ok := first.(AutoresearchLifecycleEvent)
 	if !ok || lifecycle.Phase != AutoresearchPhaseStatus || lifecycle.RunsLogged != 3 {
 		t.Fatalf("unexpected lifecycle event: %#v", first)
 	}
-	second, err := client.nextEvent(ctx)
-	if err != nil {
-		t.Fatalf("next operation event: %v", err)
-	}
+	second := <-events
 	operation, ok := second.(AutoresearchOperationEvent)
 	if !ok || operation.Operation != AutoresearchOperationReplay || operation.Phase != AutoresearchOperationCompleted || operation.AttemptID != "attempt-1" {
 		t.Fatalf("unexpected operation event: %#v", second)
@@ -212,6 +207,22 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 				result["remainingBytes"] = 0
 			case "autohand.goal.listTemplates":
 				responseResult = []interface{}{}
+			case "autohand.getSkillsRegistry":
+				responseResult = map[string]interface{}{
+					"success": true,
+					"skills": []interface{}{map[string]interface{}{
+						"id": "skill-1", "name": "review", "description": "Review code", "category": "quality",
+					}},
+					"categories": []interface{}{map[string]interface{}{"name": "quality", "count": 1}},
+				}
+			case "autohand.installSkill":
+				responseResult = map[string]interface{}{"success": true, "skillName": "review", "path": ".autohand/skills/review"}
+			case "autohand.mcp.listServers":
+				responseResult = map[string]interface{}{"servers": []interface{}{map[string]interface{}{"name": "github", "status": "connected", "toolCount": 2}}}
+			case "autohand.mcp.listTools":
+				responseResult = map[string]interface{}{"tools": []interface{}{map[string]interface{}{"name": "issues", "description": "List issues", "serverName": "github"}}}
+			case "autohand.mcp.getServerConfigs":
+				responseResult = map[string]interface{}{"configs": []interface{}{map[string]interface{}{"name": "github", "transport": "stdio", "command": "gh-mcp", "args": []string{"serve"}, "autoConnect": true}}}
 			}
 			response, _ := json.Marshal(map[string]interface{}{
 				"jsonrpc": "2.0",

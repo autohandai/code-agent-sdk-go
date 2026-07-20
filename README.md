@@ -19,6 +19,7 @@ The SDK:
 - Communicates via JSON-RPC 2.0 over stdin/stdout
 - Provides an idiomatic Go API
 - Supports streaming events
+- Discovers and installs community skills, and inspects MCP servers, tools, and configurations
 
 ## Other Programming Languages (Beta)
 
@@ -158,6 +159,21 @@ AGENTS.md behavior, token thresholds, skill sources, and startup feature flags.
 AutohandAI credentials can be supplied with `AUTOHAND_AI_API_KEY`,
 `AUTOHAND_AI_BASE_URL`, and `AUTOHAND_AI_PLAN`.
 
+## Skill And MCP Discovery
+
+`Agent`, `SDK`, and `RPCClient` expose typed methods for the current CLI
+discovery surface: `GetSkillsRegistry`, `InstallSkill`, `ListMCPServers`,
+`ListMCPTools`, and `GetMCPServerConfigs`. Skill installation requires an
+explicit `SkillInstallScopeUser` or `SkillInstallScopeProject` destination.
+
+## Startup Performance
+
+Wrapper-controlled startup is guarded by a deterministic subprocess benchmark.
+The current baseline keeps the p95 of public import, `SDK.Start`, and fixture
+spawn-to-first-RPC below 50 ms. See
+[startup performance](./docs/startup-performance.md) for the measurement
+contract, current results, and the separate live CLI/provider readiness caveat.
+
 ## API Reference
 
 See the `docs/` directory:
@@ -173,6 +189,7 @@ See the `docs/` directory:
 - `docs/memory.md` - CLI memory behavior through SDK event streams.
 - `docs/sdlc-workflows.md` - discovery, gated implementation, and release-readiness flows.
 - `docs/autoresearch.md` - persisted experiments, replay, rescoring, Pareto analysis, pinning, and pruning.
+- `docs/startup-performance.md` - deterministic startup benchmark contract and baseline.
 
 ## Examples
 

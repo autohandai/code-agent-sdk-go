@@ -165,6 +165,31 @@ err = sdk.ToggleMCPServer(ctx, "filesystem", true)
 err = sdk.SetMCPServers(ctx, map[string]autohand.MCPServerConfig{})
 ```
 
+### Skill Registry And MCP Discovery
+
+The five discovery operations are available on `Agent`, `SDK`, and
+`RPCClient`:
+
+```go
+refresh := true
+registry, err := sdk.GetSkillsRegistry(ctx, &autohand.GetSkillsRegistryParams{
+    ForceRefresh: &refresh,
+})
+installed, err := sdk.InstallSkill(ctx, &autohand.InstallSkillParams{
+    SkillName: "code-review",
+    Scope:     autohand.SkillInstallScopeProject,
+})
+servers, err := sdk.ListMCPServers(ctx)
+tools, err := sdk.ListMCPTools(ctx, &autohand.MCPListToolsParams{
+    ServerName: "github",
+})
+configs, err := sdk.GetMCPServerConfigs(ctx)
+```
+
+MCP configuration transports are represented by `MCPTransportStdio`,
+`MCPTransportSSE`, and `MCPTransportHTTP`. Optional registry metadata and MCP
+configuration fields preserve omission through pointer or `omitempty` fields.
+
 ### System Prompts And AGENTS.md
 
 ```go

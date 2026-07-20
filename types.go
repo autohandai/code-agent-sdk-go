@@ -43,7 +43,7 @@ func (e *jsonRPCError) Error() string {
 // transportResponse carries either a JSON-RPC result or error.
 type transportResponse struct {
 	result json.RawMessage
-	err    *jsonRPCError
+	err    error
 }
 
 // ProviderName represents supported LLM providers.

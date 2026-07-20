@@ -11,15 +11,21 @@ import (
 type RPCClient struct {
 	transport *Transport
 
-	mu           sync.Mutex
-	eventQueue   []Event
-	eventWaiters []chan Event
+	mu               sync.Mutex
+	subscribers      map[uint64]eventSubscription
+	nextSubscriberID uint64
+}
+
+type eventSubscription struct {
+	events chan Event
+	done   chan struct{}
 }
 
 // NewRPCClient creates a new RPC client.
 func NewRPCClient(cfg *Config) *RPCClient {
 	c := &RPCClient{
-		transport: NewTransport(cfg),
+		transport:   NewTransport(cfg),
+		subscribers: make(map[uint64]eventSubscription),
 	}
 	c.setupNotifications()
 	return c
@@ -32,7 +38,9 @@ func (c *RPCClient) Start(ctx context.Context, cfg *Config) error {
 
 // Stop stops the transport.
 func (c *RPCClient) Stop() error {
-	return c.transport.Stop()
+	err := c.transport.Stop()
+	c.closeSubscribers()
+	return err
 }
 
 // Prompt sends a prompt to the agent.
@@ -185,6 +193,43 @@ func (c *RPCClient) SetMCPServers(ctx context.Context, servers map[string]MCPSer
 	params := map[string]interface{}{"servers": servers}
 	_, err := c.transport.Request(ctx, "autohand.mcp.setServers", params)
 	return err
+}
+
+// GetSkillsRegistry returns the community skill registry.
+func (c *RPCClient) GetSkillsRegistry(ctx context.Context, params *GetSkillsRegistryParams) (*GetSkillsRegistryResult, error) {
+	if params == nil {
+		params = &GetSkillsRegistryParams{}
+	}
+	return rpcRequest[GetSkillsRegistryResult](ctx, c, "autohand.getSkillsRegistry", params)
+}
+
+// InstallSkill installs a registry skill into user or project scope.
+func (c *RPCClient) InstallSkill(ctx context.Context, params *InstallSkillParams) (*InstallSkillResult, error) {
+	if params == nil || params.SkillName == "" {
+		return nil, fmt.Errorf("install skill: skill name is required")
+	}
+	if params.Scope != SkillInstallScopeUser && params.Scope != SkillInstallScopeProject {
+		return nil, fmt.Errorf("install skill: scope must be %q or %q", SkillInstallScopeUser, SkillInstallScopeProject)
+	}
+	return rpcRequest[InstallSkillResult](ctx, c, "autohand.installSkill", params)
+}
+
+// ListMCPServers returns all known MCP servers and their status.
+func (c *RPCClient) ListMCPServers(ctx context.Context) (*MCPListServersResult, error) {
+	return rpcRequest[MCPListServersResult](ctx, c, "autohand.mcp.listServers", map[string]interface{}{})
+}
+
+// ListMCPTools returns all available MCP tools, optionally filtered by server.
+func (c *RPCClient) ListMCPTools(ctx context.Context, params *MCPListToolsParams) (*MCPListToolsResult, error) {
+	if params == nil {
+		params = &MCPListToolsParams{}
+	}
+	return rpcRequest[MCPListToolsResult](ctx, c, "autohand.mcp.listTools", params)
+}
+
+// GetMCPServerConfigs returns the configured MCP server definitions.
+func (c *RPCClient) GetMCPServerConfigs(ctx context.Context) (*MCPGetServerConfigsResult, error) {
+	return rpcRequest[MCPGetServerConfigsResult](ctx, c, "autohand.mcp.getServerConfigs", map[string]interface{}{})
 }
 
 // GetHooks returns all hooks.
@@ -429,6 +474,18 @@ func autoresearchRequest[T any](ctx context.Context, client *RPCClient, method s
 	return &result, nil
 }
 
+func rpcRequest[T any](ctx context.Context, client *RPCClient, method string, params interface{}) (*T, error) {
+	response, err := client.transport.Request(ctx, method, params)
+	if err != nil {
+		return nil, err
+	}
+	var result T
+	if err := json.Unmarshal(response, &result); err != nil {
+		return nil, fmt.Errorf("unmarshal %s result: %w", method, err)
+	}
+	return &result, nil
+}
+
 // Request sends a custom RPC request.
 func (c *RPCClient) Request(ctx context.Context, method string, params interface{}) (json.RawMessage, error) {
 	return c.transport.Request(ctx, method, params)
@@ -437,54 +494,52 @@ func (c *RPCClient) Request(ctx context.Context, method string, params interface
 // Events returns a channel of SDK events.
 func (c *RPCClient) Events(ctx context.Context) <-chan Event {
 	ch := make(chan Event, 256)
+	done := make(chan struct{})
+	c.mu.Lock()
+	if c.subscribers == nil {
+		c.subscribers = make(map[uint64]eventSubscription)
+	}
+	id := c.nextSubscriberID
+	c.nextSubscriberID++
+	c.subscribers[id] = eventSubscription{events: ch, done: done}
+	c.mu.Unlock()
+
 	go func() {
-		defer close(ch)
-		for {
-			event, err := c.nextEvent(ctx)
-			if err != nil {
-				return
+		select {
+		case <-ctx.Done():
+			c.mu.Lock()
+			if subscriber, ok := c.subscribers[id]; ok {
+				delete(c.subscribers, id)
+				close(subscriber.events)
+				close(subscriber.done)
 			}
-			select {
-			case ch <- event:
-			case <-ctx.Done():
-				return
-			}
+			c.mu.Unlock()
+		case <-done:
 		}
 	}()
 	return ch
-}
-
-func (c *RPCClient) nextEvent(ctx context.Context) (Event, error) {
-	c.mu.Lock()
-	if len(c.eventQueue) > 0 {
-		event := c.eventQueue[0]
-		c.eventQueue = c.eventQueue[1:]
-		c.mu.Unlock()
-		return event, nil
-	}
-
-	waiter := make(chan Event, 1)
-	c.eventWaiters = append(c.eventWaiters, waiter)
-	c.mu.Unlock()
-
-	select {
-	case event := <-waiter:
-		return event, nil
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	}
 }
 
 func (c *RPCClient) queueEvent(event Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if len(c.eventWaiters) > 0 {
-		waiter := c.eventWaiters[0]
-		c.eventWaiters = c.eventWaiters[1:]
-		waiter <- event
-	} else {
-		c.eventQueue = append(c.eventQueue, event)
+	for _, subscriber := range c.subscribers {
+		select {
+		case subscriber.events <- event:
+		default:
+			// A slow subscriber must not block the JSON-RPC reader or other subscribers.
+		}
+	}
+}
+
+func (c *RPCClient) closeSubscribers() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	for id, subscriber := range c.subscribers {
+		delete(c.subscribers, id)
+		close(subscriber.events)
+		close(subscriber.done)
 	}
 }
 

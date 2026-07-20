@@ -54,25 +54,34 @@ func (s *SDK) Start(ctx context.Context) error {
 	if err := s.client.Start(ctx, s.cfg); err != nil {
 		return fmt.Errorf("start SDK: %w", err)
 	}
-	s.started = true
+	rollback := func(cause error) error {
+		if stopErr := s.client.Stop(); stopErr != nil {
+			return fmt.Errorf("%w (rollback failed: %v)", cause, stopErr)
+		}
+		return cause
+	}
+	if _, err := s.client.GetState(ctx); err != nil {
+		return rollback(fmt.Errorf("wait for CLI readiness: %w", err))
+	}
 	if s.cfg.Features != nil {
 		if err := s.client.ApplyFlagSettings(ctx, map[string]interface{}{"features": s.cfg.Features}); err != nil {
-			return fmt.Errorf("apply startup feature settings: %w", err)
+			return rollback(fmt.Errorf("apply startup feature settings: %w", err))
 		}
 	}
 
 	if s.cfg.PermissionMode != "" && s.cfg.PermissionMode != PermissionInteractive {
 		if err := s.client.SetPermissionMode(ctx, s.cfg.PermissionMode); err != nil {
-			return fmt.Errorf("set permission mode: %w", err)
+			return rollback(fmt.Errorf("set permission mode: %w", err))
 		}
 	}
 
 	if s.cfg.PlanMode {
 		if err := s.client.SetPlanMode(ctx, true); err != nil {
-			return fmt.Errorf("set plan mode: %w", err)
+			return rollback(fmt.Errorf("set plan mode: %w", err))
 		}
 	}
 
+	s.started = true
 	return nil
 }
 
@@ -203,61 +212,47 @@ func (s *SDK) StreamPrompt(ctx context.Context, params *PromptParams) (<-chan Ev
 		return nil, err
 	}
 
-	events := s.client.Events(ctx)
+	streamCtx, cancelStream := context.WithCancel(ctx)
+	events := s.client.Events(streamCtx)
 	out := make(chan Event, 256)
 
 	go func() {
 		defer close(out)
+		defer cancelStream()
 
-		promptSettled := false
-		var promptErr error
-
-		promptDone := make(chan struct{}, 1)
+		promptDone := make(chan error, 1)
 		go func() {
-			if err := s.client.Prompt(ctx, params); err != nil {
-				promptErr = err
-			}
-			promptSettled = true
-			close(promptDone)
+			promptDone <- s.client.Prompt(streamCtx, params)
 		}()
+		promptSettled := false
 
 		for {
-			if promptSettled && promptErr != nil {
-				out <- ErrorEvent{
-					Type:    "error",
-					Code:    -1,
-					Message: promptErr.Error(),
-				}
-				return
-			}
-
-			var event Event
-			var ok bool
-
-			if promptSettled {
-				select {
-				case event, ok = <-events:
-					if !ok {
-						return
-					}
-				case <-ctx.Done():
+			select {
+			case event, ok := <-events:
+				if !ok {
 					return
 				}
-			} else {
 				select {
-				case event, ok = <-events:
-					if !ok {
-						return
-					}
-				case <-promptDone:
+				case out <- event:
+				case <-streamCtx.Done():
+					return
+				}
+				if e, ok := event.(AgentEndEvent); ok && e.Type == "agent_end" {
+					return
+				}
+			case err := <-promptDone:
+				if promptSettled {
 					continue
-				case <-ctx.Done():
+				}
+				promptSettled = true
+				if err != nil {
+					select {
+					case out <- ErrorEvent{Type: "error", Code: -1, Message: err.Error()}:
+					case <-streamCtx.Done():
+					}
 					return
 				}
-			}
-
-			out <- event
-			if e, ok := event.(AgentEndEvent); ok && e.Type == "agent_end" {
+			case <-streamCtx.Done():
 				return
 			}
 		}
@@ -474,6 +469,46 @@ func (s *SDK) SetMCPServers(ctx context.Context, servers map[string]MCPServerCon
 		return err
 	}
 	return s.client.SetMCPServers(ctx, servers)
+}
+
+// GetSkillsRegistry returns the community skill registry.
+func (s *SDK) GetSkillsRegistry(ctx context.Context, params *GetSkillsRegistryParams) (*GetSkillsRegistryResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetSkillsRegistry(ctx, params)
+}
+
+// InstallSkill installs a registry skill into user or project scope.
+func (s *SDK) InstallSkill(ctx context.Context, params *InstallSkillParams) (*InstallSkillResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.InstallSkill(ctx, params)
+}
+
+// ListMCPServers returns all known MCP servers and their status.
+func (s *SDK) ListMCPServers(ctx context.Context) (*MCPListServersResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.ListMCPServers(ctx)
+}
+
+// ListMCPTools returns available MCP tools, optionally filtered by server.
+func (s *SDK) ListMCPTools(ctx context.Context, params *MCPListToolsParams) (*MCPListToolsResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.ListMCPTools(ctx, params)
+}
+
+// GetMCPServerConfigs returns the configured MCP server definitions.
+func (s *SDK) GetMCPServerConfigs(ctx context.Context) (*MCPGetServerConfigsResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetMCPServerConfigs(ctx)
 }
 
 // AllowPermission approves a permission request.
@@ -783,7 +818,7 @@ func (s *SDK) UpdateConfig(cfg *Config) {
 }
 
 func (s *SDK) ensureStarted(ctx context.Context) error {
-	if !s.started {
+	if !s.IsStarted() {
 		return s.Start(ctx)
 	}
 	return nil

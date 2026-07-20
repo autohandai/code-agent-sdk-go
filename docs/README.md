@@ -20,6 +20,7 @@ Go application -> autohand package -> CLI subprocess -> AI provider
 - [Plan Mode](./plan-mode.md)
 - [Memory](./memory.md)
 - [SDLC Workflows](./sdlc-workflows.md)
+- [Startup Performance](./startup-performance.md)
 
 ## Examples
 

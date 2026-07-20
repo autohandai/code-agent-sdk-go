@@ -402,6 +402,31 @@ func (a *Agent) PruneAutoresearch(ctx context.Context, params *AutoresearchPrune
 	return a.sdk.PruneAutoresearch(ctx, params)
 }
 
+// GetSkillsRegistry returns the community skill registry.
+func (a *Agent) GetSkillsRegistry(ctx context.Context, params *GetSkillsRegistryParams) (*GetSkillsRegistryResult, error) {
+	return a.sdk.GetSkillsRegistry(ctx, params)
+}
+
+// InstallSkill installs a registry skill into user or project scope.
+func (a *Agent) InstallSkill(ctx context.Context, params *InstallSkillParams) (*InstallSkillResult, error) {
+	return a.sdk.InstallSkill(ctx, params)
+}
+
+// ListMCPServers returns all known MCP servers and their status.
+func (a *Agent) ListMCPServers(ctx context.Context) (*MCPListServersResult, error) {
+	return a.sdk.ListMCPServers(ctx)
+}
+
+// ListMCPTools returns available MCP tools, optionally filtered by server.
+func (a *Agent) ListMCPTools(ctx context.Context, params *MCPListToolsParams) (*MCPListToolsResult, error) {
+	return a.sdk.ListMCPTools(ctx, params)
+}
+
+// GetMCPServerConfigs returns configured MCP server definitions.
+func (a *Agent) GetMCPServerConfigs(ctx context.Context) (*MCPGetServerConfigsResult, error) {
+	return a.sdk.GetMCPServerConfigs(ctx)
+}
+
 // RunJson runs a prompt and returns the result parsed as JSON.
 func (a *Agent) RunJson(ctx context.Context, input interface{}, opts *PromptParams, jsonOpts ...JsonParseOptions[json.RawMessage]) (json.RawMessage, error) {
 	run, err := a.Send(ctx, input, opts)

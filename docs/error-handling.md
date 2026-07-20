@@ -19,6 +19,17 @@ if err := sdk.Start(ctx); err != nil {
 }
 ```
 
+Requests made before `Start` return `ErrTransportNotStarted`. If the CLI closes
+stdout while requests are pending, those requests return `ErrTransportClosed`
+immediately instead of waiting for their configured timeout. Use `errors.Is` to
+distinguish either lifecycle failure:
+
+```go
+if _, err := sdk.GetState(ctx); errors.Is(err, autohand.ErrTransportClosed) {
+    log.Printf("Autohand CLI exited; recreate or restart the SDK")
+}
+```
+
 Common causes:
 
 - `CLIPath` points at a missing or non-executable file.
