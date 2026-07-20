@@ -34,7 +34,7 @@ func assertControlRequest(t *testing.T, request capturedRPCRequest, method strin
 }
 
 func TestResetExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -47,7 +47,7 @@ func TestResetExactWireAndResult(t *testing.T) {
 }
 
 func TestBrowserHandoffCreateExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -68,7 +68,7 @@ func TestBrowserHandoffCreateExactWireAndResult(t *testing.T) {
 }
 
 func TestBrowserHandoffAttachExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -83,7 +83,7 @@ func TestBrowserHandoffAttachExactWireAndResult(t *testing.T) {
 }
 
 func TestBrowserHandoffAttachLatestExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -96,7 +96,7 @@ func TestBrowserHandoffAttachLatestExactWireAndResult(t *testing.T) {
 }
 
 func TestAutomodeStartExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -140,7 +140,7 @@ func TestAutomodeStartRejectsMissingPrompt(t *testing.T) {
 }
 
 func TestAutomodeStatusExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -153,7 +153,7 @@ func TestAutomodeStatusExactWireAndResult(t *testing.T) {
 }
 
 func TestAutomodePauseExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -166,7 +166,7 @@ func TestAutomodePauseExactWireAndResult(t *testing.T) {
 }
 
 func TestAutomodeResumeExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -179,7 +179,7 @@ func TestAutomodeResumeExactWireAndResult(t *testing.T) {
 }
 
 func TestAutomodeCancelExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -195,7 +195,7 @@ func TestAutomodeCancelExactWireAndResult(t *testing.T) {
 }
 
 func TestAutomodeLogExactWireAndResult(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

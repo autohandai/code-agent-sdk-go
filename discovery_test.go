@@ -9,7 +9,7 @@ import (
 )
 
 func TestDiscoveryRPCMethodsAndTypedResults(t *testing.T) {
-	client, requests, cleanup := newAutoresearchTestClient(t)
+	client, requests, cleanup := newRPCTestClient(t)
 	defer cleanup()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

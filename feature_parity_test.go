@@ -24,7 +24,7 @@ func TestFormatSlashCommand(t *testing.T) {
 }
 
 func TestGoalRPCMethodsAndSnakeCaseParams(t *testing.T) {
-	client, requests, closeTransport := newAutoresearchTestClient(t)
+	client, requests, closeTransport := newRPCTestClient(t)
 	defer closeTransport()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
