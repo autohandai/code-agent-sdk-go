@@ -617,6 +617,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.automode.complete", func(params json.RawMessage) {
+		var event AutomodeCompleteEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.SessionID == "" || event.Iterations < 0 || event.FilesCreated < 0 || event.FilesModified < 0 || event.Timestamp == "" {
+			return
+		}
+		event.Type = "automode_complete"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

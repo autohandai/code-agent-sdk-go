@@ -606,6 +606,18 @@ type AutomodeIterationEvent struct {
 
 func (e AutomodeIterationEvent) eventType() string { return "automode_iteration" }
 
+// AutomodeCompleteEvent reports terminal auto-mode file and iteration totals.
+type AutomodeCompleteEvent struct {
+	Type          string `json:"type"`
+	SessionID     string `json:"sessionId"`
+	Iterations    int    `json:"iterations"`
+	FilesCreated  int    `json:"filesCreated"`
+	FilesModified int    `json:"filesModified"`
+	Timestamp     string `json:"timestamp"`
+}
+
+func (e AutomodeCompleteEvent) eventType() string { return "automode_complete" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`
