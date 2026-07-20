@@ -626,6 +626,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.automode.error", func(params json.RawMessage) {
+		var event AutomodeErrorEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.SessionID == "" || event.Error == "" || event.Timestamp == "" {
+			return
+		}
+		event.Type = "automode_error"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

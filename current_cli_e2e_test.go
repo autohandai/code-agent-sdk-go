@@ -395,3 +395,24 @@ func TestAutomodeCompleteEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed auto-mode completion event")
 	}
 }
+
+func TestAutomodeErrorEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.automode.error","params":{"sessionId":"auto-1","error":"iteration failed","timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(AutomodeErrorEvent)
+		if !ok || event.Error != "iteration failed" {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed auto-mode error event")
+	}
+}

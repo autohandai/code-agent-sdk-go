@@ -618,6 +618,16 @@ type AutomodeCompleteEvent struct {
 
 func (e AutomodeCompleteEvent) eventType() string { return "automode_complete" }
 
+// AutomodeErrorEvent reports an auto-mode terminal failure.
+type AutomodeErrorEvent struct {
+	Type      string `json:"type"`
+	SessionID string `json:"sessionId"`
+	Error     string `json:"error"`
+	Timestamp string `json:"timestamp"`
+}
+
+func (e AutomodeErrorEvent) eventType() string { return "automode_error" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`
