@@ -37,3 +37,8 @@ optional persisted state, iteration and file counters, branch, and checkpoint.
 
 Call `PauseAutomode(ctx)` to pause the active session. CLI business failures
 remain typed results with `Success == false` and an optional `Error`.
+
+## Resume Auto-Mode
+
+Call `ResumeAutomode(ctx)` to continue a paused session. The typed result
+reports business success or an optional CLI error.

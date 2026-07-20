@@ -334,6 +334,11 @@ func (a *Agent) PauseAutomode(ctx context.Context) (*AutomodePauseResult, error)
 	return a.sdk.PauseAutomode(ctx)
 }
 
+// ResumeAutomode resumes a paused auto-mode session.
+func (a *Agent) ResumeAutomode(ctx context.Context) (*AutomodeResumeResult, error) {
+	return a.sdk.ResumeAutomode(ctx)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

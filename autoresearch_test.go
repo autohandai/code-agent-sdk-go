@@ -209,6 +209,8 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 				}
 			case "autohand.automode.pause":
 				responseResult = map[string]interface{}{"success": false, "error": "No auto-mode session is running"}
+			case "autohand.automode.resume":
+				responseResult = map[string]interface{}{"success": true}
 			case "autohand.autoresearch.start":
 				result["instruction"] = "Run the next experiment"
 			case "autohand.autoresearch.status":

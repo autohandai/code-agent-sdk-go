@@ -60,3 +60,9 @@ type AutomodePauseResult struct {
 	Success bool    `json:"success"`
 	Error   *string `json:"error,omitempty"`
 }
+
+// AutomodeResumeResult reports the business result of a resume request.
+type AutomodeResumeResult struct {
+	Success bool    `json:"success"`
+	Error   *string `json:"error,omitempty"`
+}
