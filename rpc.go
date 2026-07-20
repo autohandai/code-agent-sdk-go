@@ -113,8 +113,8 @@ func (c *RPCClient) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHan
 
 // StartAutomode starts an auto-mode task and returns when the CLI accepts it.
 func (c *RPCClient) StartAutomode(ctx context.Context, params *AutomodeStartParams) (*AutomodeStartResult, error) {
-	if params == nil {
-		params = &AutomodeStartParams{}
+	if err := params.validate(); err != nil {
+		return nil, err
 	}
 	return rpcRequest[AutomodeStartResult](ctx, c, "autohand.automode.start", params)
 }

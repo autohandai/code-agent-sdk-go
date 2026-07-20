@@ -130,6 +130,15 @@ func TestAutomodeStartExactWireAndResult(t *testing.T) {
 	})
 }
 
+func TestAutomodeStartRejectsMissingPrompt(t *testing.T) {
+	client := NewRPCClient(&Config{})
+	for _, params := range []*AutomodeStartParams{nil, {Prompt: " \t"}} {
+		if _, err := client.StartAutomode(context.Background(), params); err == nil || err.Error() != "auto-mode prompt is required" {
+			t.Fatalf("StartAutomode(%#v) error = %v", params, err)
+		}
+	}
+}
+
 func TestAutomodeStatusExactWireAndResult(t *testing.T) {
 	client, requests, cleanup := newAutoresearchTestClient(t)
 	defer cleanup()

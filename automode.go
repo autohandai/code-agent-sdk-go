@@ -1,5 +1,10 @@
 package autohand
 
+import (
+	"fmt"
+	"strings"
+)
+
 // AutomodeStartParams configures an auto-mode task.
 type AutomodeStartParams struct {
 	Prompt             string   `json:"prompt"`
@@ -9,6 +14,13 @@ type AutomodeStartParams struct {
 	CheckpointInterval *int     `json:"checkpointInterval,omitempty"`
 	MaxRuntime         *int     `json:"maxRuntime,omitempty"`
 	MaxCost            *float64 `json:"maxCost,omitempty"`
+}
+
+func (p *AutomodeStartParams) validate() error {
+	if p == nil || strings.TrimSpace(p.Prompt) == "" {
+		return fmt.Errorf("auto-mode prompt is required")
+	}
+	return nil
 }
 
 // AutomodeStartResult reports whether the CLI accepted an auto-mode session.
