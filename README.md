@@ -146,6 +146,9 @@ emit typed lifecycle and ledger-operation events.
 See the [autoresearch guide](./docs/autoresearch.md) and runnable
 [`27-autoresearch-ledger`](./examples/27-autoresearch-ledger) example.
 
+Conversation reset, browser handoff, and auto-mode control are documented in
+the [CLI control guide](./docs/cli-control.md).
+
 ## Commands And Persistent Goals
 
 `Agent.Command`, `Agent.DeepResearch`, and `Agent.Autoresearch` provide validated

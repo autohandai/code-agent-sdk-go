@@ -55,6 +55,11 @@ func (c *RPCClient) Abort(ctx context.Context) error {
 	return err
 }
 
+// Reset replaces the active conversation and returns the new session ID.
+func (c *RPCClient) Reset(ctx context.Context) (*ResetResult, error) {
+	return rpcRequest[ResetResult](ctx, c, "autohand.reset", map[string]interface{}{})
+}
+
 // GetState returns the current agent state.
 func (c *RPCClient) GetState(ctx context.Context) (*GetStateResult, error) {
 	resp, err := c.transport.Request(ctx, "autohand.getState", map[string]interface{}{})

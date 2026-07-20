@@ -274,6 +274,14 @@ func (s *SDK) Abort(ctx context.Context) error {
 	return s.Interrupt(ctx)
 }
 
+// Reset replaces the active conversation and returns the new session ID.
+func (s *SDK) Reset(ctx context.Context) (*ResetResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.Reset(ctx)
+}
+
 // SetPermissionMode changes the permission mode.
 func (s *SDK) SetPermissionMode(ctx context.Context, mode PermissionMode) error {
 	if err := s.ensureStarted(ctx); err != nil {

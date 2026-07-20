@@ -299,6 +299,11 @@ func (a *Agent) DisablePlanMode(ctx context.Context) error {
 	return a.sdk.DisablePlanMode(ctx)
 }
 
+// Reset replaces the active conversation and returns the new session ID.
+func (a *Agent) Reset(ctx context.Context) (*ResetResult, error) {
+	return a.sdk.Reset(ctx)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

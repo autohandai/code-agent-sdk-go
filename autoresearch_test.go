@@ -185,6 +185,8 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 			result := map[string]interface{}{"success": true}
 			var responseResult interface{} = result
 			switch request.Method {
+			case "autohand.reset":
+				responseResult = map[string]interface{}{"sessionId": "session-new"}
 			case "autohand.autoresearch.start":
 				result["instruction"] = "Run the next experiment"
 			case "autohand.autoresearch.status":
