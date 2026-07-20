@@ -683,6 +683,20 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.mcp.toolsChanged", func(params json.RawMessage) {
+		var event MCPToolsChangedEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.Tools == nil || event.Timestamp == "" {
+			return
+		}
+		for _, tool := range event.Tools {
+			if tool.Name == "" || tool.Description == "" || tool.ServerName == "" {
+				return
+			}
+		}
+		event.Type = "mcp_tools_changed"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

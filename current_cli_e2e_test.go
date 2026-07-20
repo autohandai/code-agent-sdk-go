@@ -521,3 +521,24 @@ func TestMCPInvocationRequestEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed MCP invocation request event")
 	}
 }
+
+func TestMCPToolsChangedEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.mcp.toolsChanged","params":{"tools":[{"name":"vscode__github__issues","description":"List issues","serverName":"github"}],"timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(MCPToolsChangedEvent)
+		if !ok || len(event.Tools) != 1 || event.Tools[0].ServerName != "github" {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed MCP tools changed event")
+	}
+}

@@ -695,6 +695,16 @@ type MCPInvocationRequestEvent struct {
 
 func (e MCPInvocationRequestEvent) eventType() string { return "mcp_invoke_request" }
 
+// MCPToolsChangedEvent reports the complete current set of extension-provided
+// MCP tools.
+type MCPToolsChangedEvent struct {
+	Type      string        `json:"type"`
+	Tools     []MCPToolInfo `json:"tools"`
+	Timestamp string        `json:"timestamp"`
+}
+
+func (e MCPToolsChangedEvent) eventType() string { return "mcp_tools_changed" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`
