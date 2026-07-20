@@ -542,3 +542,24 @@ func TestMCPToolsChangedEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed MCP tools changed event")
 	}
 }
+
+func TestLearningProgressEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.learn.progress","params":{"status":"loading-registry","timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(LearningProgressEvent)
+		if !ok || event.Status != LearningLoadingRegistry {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed learning progress event")
+	}
+}

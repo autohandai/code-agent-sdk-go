@@ -697,6 +697,20 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.learn.progress", func(params json.RawMessage) {
+		var event LearningProgressEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.Timestamp == "" {
+			return
+		}
+		switch event.Status {
+		case LearningAnalyzing, LearningLoadingRegistry, LearningEvaluating, LearningGenerating, LearningUpdating:
+		default:
+			return
+		}
+		event.Type = "learn_progress"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

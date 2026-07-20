@@ -705,6 +705,27 @@ type MCPToolsChangedEvent struct {
 
 func (e MCPToolsChangedEvent) eventType() string { return "mcp_tools_changed" }
 
+// LearningProgressStatus identifies the active learning workflow phase.
+type LearningProgressStatus string
+
+const (
+	LearningAnalyzing       LearningProgressStatus = "analyzing"
+	LearningLoadingRegistry LearningProgressStatus = "loading-registry"
+	LearningEvaluating      LearningProgressStatus = "evaluating"
+	LearningGenerating      LearningProgressStatus = "generating"
+	LearningUpdating        LearningProgressStatus = "updating"
+)
+
+// LearningProgressEvent reports progress from recommend, update, or generate
+// learning workflows.
+type LearningProgressEvent struct {
+	Type      string                 `json:"type"`
+	Status    LearningProgressStatus `json:"status"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e LearningProgressEvent) eventType() string { return "learn_progress" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`
