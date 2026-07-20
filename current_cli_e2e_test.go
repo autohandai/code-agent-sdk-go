@@ -95,3 +95,19 @@ func TestAcknowledgePermissionE2E(t *testing.T) {
 		t.Fatal("expected blank request ID to fail before transport")
 	}
 }
+
+func TestRespondToDirectoryAccessE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, "")
+	result, err := fixture.sdk.RespondToDirectoryAccess(fixture.ctx, "directory-1", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.directoryAccessResponse", `"requestId":"directory-1"`, `"granted":false`)
+
+	if _, err := fixture.sdk.RespondToDirectoryAccess(fixture.ctx, "", true); err == nil {
+		t.Fatal("expected blank request ID to fail before transport")
+	}
+}
