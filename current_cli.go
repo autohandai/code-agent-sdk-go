@@ -414,6 +414,12 @@ type GetToolsRegistryResult struct {
 	Diagnostics []ToolRegistryDiagnostic `json:"diagnostics"`
 }
 
+// ContextCompactResult reports the effective automatic context compaction
+// setting.
+type ContextCompactResult struct {
+	Enabled bool `json:"enabled"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -699,4 +705,22 @@ func (s *SDK) GetToolsRegistry(ctx context.Context) (*GetToolsRegistryResult, er
 		return nil, err
 	}
 	return s.client.GetToolsRegistry(ctx)
+}
+
+// SetContextCompact enables or disables automatic context compaction.
+func (c *RPCClient) SetContextCompact(ctx context.Context, enabled bool) (*ContextCompactResult, error) {
+	return rpcRequest[ContextCompactResult](ctx, c, "autohand.setContextCompact", map[string]bool{"enabled": enabled})
+}
+
+// SetContextCompact enables or disables automatic context compaction.
+func (s *SDK) SetContextCompact(ctx context.Context, enabled bool) (*ContextCompactResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	result, err := s.client.SetContextCompact(ctx, enabled)
+	if err == nil {
+		s.cfg.ContextCompact = result.Enabled
+		s.cfg.NoContextCompact = !result.Enabled
+	}
+	return result, err
 }

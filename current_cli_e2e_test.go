@@ -319,3 +319,15 @@ func TestGetToolsRegistryE2E(t *testing.T) {
 	}
 	fixture.assertRequest(t, "autohand.getToolsRegistry", `"params":{}`)
 }
+
+func TestSetContextCompactE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"enabled":false}`, "")
+	result, err := fixture.sdk.SetContextCompact(fixture.ctx, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Enabled || !fixture.sdk.Config().NoContextCompact {
+		t.Fatalf("result = %+v, config = %+v", result, fixture.sdk.Config())
+	}
+	fixture.assertRequest(t, "autohand.setContextCompact", `"enabled":false`)
+}
