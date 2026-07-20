@@ -416,3 +416,24 @@ func TestAutomodeErrorEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed auto-mode error event")
 	}
 }
+
+func TestHookPreToolEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.hook.preTool","params":{"toolId":"tool-1","toolName":"read_file","args":{"path":"README.md"},"timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(HookPreToolEvent)
+		if !ok || event.ToolName != "read_file" || event.Args["path"] != "README.md" {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed pre-tool hook event")
+	}
+}

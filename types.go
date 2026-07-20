@@ -628,6 +628,17 @@ type AutomodeErrorEvent struct {
 
 func (e AutomodeErrorEvent) eventType() string { return "automode_error" }
 
+// HookPreToolEvent is emitted immediately before hook processing for a tool.
+type HookPreToolEvent struct {
+	Type      string                 `json:"type"`
+	ToolID    string                 `json:"toolId"`
+	ToolName  string                 `json:"toolName"`
+	Args      map[string]interface{} `json:"args"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e HookPreToolEvent) eventType() string { return "hook_pre_tool" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

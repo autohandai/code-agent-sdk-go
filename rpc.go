@@ -635,6 +635,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.hook.preTool", func(params json.RawMessage) {
+		var event HookPreToolEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.ToolID == "" || event.ToolName == "" || event.Args == nil || event.Timestamp == "" {
+			return
+		}
+		event.Type = "hook_pre_tool"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)
