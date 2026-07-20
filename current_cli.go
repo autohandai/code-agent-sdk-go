@@ -193,6 +193,51 @@ type YoloSetResult struct {
 	ExpiresIn *int `json:"expiresIn,omitempty"`
 }
 
+// MCPInputSchema describes object-shaped arguments accepted by a VS Code MCP
+// tool.
+type MCPInputSchema struct {
+	Type       string                 `json:"type"`
+	Properties map[string]interface{} `json:"properties"`
+	Required   []string               `json:"required,omitempty"`
+}
+
+// MCPVSCodeTool is a tool descriptor supplied by a VS Code extension.
+type MCPVSCodeTool struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	ServerName  string          `json:"serverName"`
+	InputSchema *MCPInputSchema `json:"inputSchema,omitempty"`
+}
+
+// MCPSetVSCodeToolsParams replaces the CLI's extension-provided MCP tools.
+// An empty list clears previously registered tools.
+type MCPSetVSCodeToolsParams struct {
+	Tools []MCPVSCodeTool `json:"tools"`
+}
+
+func (p *MCPSetVSCodeToolsParams) validate() error {
+	if p == nil {
+		return fmt.Errorf("set VS Code MCP tools: params are required")
+	}
+	if p.Tools == nil {
+		return fmt.Errorf("set VS Code MCP tools: tools must be an initialized list")
+	}
+	for i, tool := range p.Tools {
+		if strings.TrimSpace(tool.Name) == "" || strings.TrimSpace(tool.Description) == "" || strings.TrimSpace(tool.ServerName) == "" {
+			return fmt.Errorf("set VS Code MCP tools: tool %d requires name, description, and server name", i)
+		}
+		if tool.InputSchema != nil && tool.InputSchema.Type != "object" {
+			return fmt.Errorf("set VS Code MCP tools: tool %d input schema type must be object", i)
+		}
+	}
+	return nil
+}
+
+// MCPSetVSCodeToolsResult reports whether the tool set was accepted.
+type MCPSetVSCodeToolsResult struct {
+	Success bool `json:"success"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -384,4 +429,20 @@ func (s *SDK) SetYoloAlias(ctx context.Context, params *YoloSetParams) (*YoloSet
 		return nil, err
 	}
 	return s.client.SetYoloAlias(ctx, params)
+}
+
+// SetVSCodeMCPTools replaces the extension-provided MCP tool descriptors.
+func (c *RPCClient) SetVSCodeMCPTools(ctx context.Context, params *MCPSetVSCodeToolsParams) (*MCPSetVSCodeToolsResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[MCPSetVSCodeToolsResult](ctx, c, "autohand.mcp.setVscodeTools", params)
+}
+
+// SetVSCodeMCPTools replaces the extension-provided MCP tool descriptors.
+func (s *SDK) SetVSCodeMCPTools(ctx context.Context, params *MCPSetVSCodeToolsParams) (*MCPSetVSCodeToolsResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.SetVSCodeMCPTools(ctx, params)
 }

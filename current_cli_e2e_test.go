@@ -229,3 +229,22 @@ func TestSetYoloE2E(t *testing.T) {
 		t.Fatal("expected negative timeout to fail before transport")
 	}
 }
+
+func TestSetVSCodeMCPToolsE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, "")
+	result, err := fixture.sdk.SetVSCodeMCPTools(fixture.ctx, &MCPSetVSCodeToolsParams{Tools: []MCPVSCodeTool{{
+		Name: "issues", Description: "List issues", ServerName: "github",
+		InputSchema: &MCPInputSchema{Type: "object", Properties: map[string]interface{}{"state": map[string]interface{}{"type": "string"}}, Required: []string{"state"}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.mcp.setVscodeTools", `"serverName":"github"`, `"inputSchema":{"type":"object"`, `"required":["state"]`)
+
+	if _, err := fixture.sdk.SetVSCodeMCPTools(fixture.ctx, &MCPSetVSCodeToolsParams{Tools: []MCPVSCodeTool{{Name: "broken"}}}); err == nil {
+		t.Fatal("expected malformed tool descriptor to fail before transport")
+	}
+}
