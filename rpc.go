@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -602,6 +603,20 @@ func (c *RPCClient) IsConnected() bool {
 }
 
 func (c *RPCClient) setupNotifications() {
+	c.transport.OnUnknownNotification(func(method string, params json.RawMessage) {
+		typeName := strings.TrimPrefix(method, "autohand.")
+		c.queueEvent(GenericEvent{Type: typeName, Method: method, Params: append(json.RawMessage(nil), params...)})
+	})
+
+	c.transport.OnNotification("autohand.automode.iteration", func(params json.RawMessage) {
+		var event AutomodeIterationEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.SessionID == "" || event.Iteration < 1 || event.Actions == nil || event.Timestamp == "" {
+			return
+		}
+		event.Type = "automode_iteration"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

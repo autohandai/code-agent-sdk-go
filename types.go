@@ -584,6 +584,28 @@ type Event interface {
 	eventType() string
 }
 
+// GenericEvent preserves notifications introduced by a newer CLI when the SDK
+// does not yet have a dedicated event type.
+type GenericEvent struct {
+	Type   string          `json:"type"`
+	Method string          `json:"method"`
+	Params json.RawMessage `json:"params"`
+}
+
+func (e GenericEvent) eventType() string { return e.Type }
+
+// AutomodeIterationEvent reports one completed auto-mode iteration.
+type AutomodeIterationEvent struct {
+	Type       string   `json:"type"`
+	SessionID  string   `json:"sessionId"`
+	Iteration  int      `json:"iteration"`
+	Actions    []string `json:"actions"`
+	TokensUsed *int     `json:"tokensUsed,omitempty"`
+	Timestamp  string   `json:"timestamp"`
+}
+
+func (e AutomodeIterationEvent) eventType() string { return "automode_iteration" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

@@ -331,3 +331,46 @@ func TestSetContextCompactE2E(t *testing.T) {
 	}
 	fixture.assertRequest(t, "autohand.setContextCompact", `"enabled":false`)
 }
+
+func TestAutomodeIterationEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.automode.iteration","params":{"sessionId":"auto-1","iteration":3,"actions":["edit","test"],"tokensUsed":321,"timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(AutomodeIterationEvent)
+		if !ok || event.Iteration != 3 || event.TokensUsed == nil || *event.TokensUsed != 321 {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed auto-mode iteration event")
+	}
+	fixture.assertRequest(t, "autohand.prompt")
+}
+
+func TestUnknownNotificationFallbackE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.future.event","params":{"value":7}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(GenericEvent)
+		if !ok || event.Method != "autohand.future.event" || !strings.Contains(string(event.Params), `"value":7`) {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for generic fallback event")
+	}
+}

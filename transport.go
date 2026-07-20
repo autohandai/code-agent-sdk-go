@@ -31,12 +31,13 @@ type Transport struct {
 
 	lineReader *LineReader
 
-	mu        sync.Mutex
-	callbacks map[int]chan transportResponse
-	notify    map[string]func(json.RawMessage)
-	nextID    int
-	debug     bool
-	timeout   time.Duration
+	mu            sync.Mutex
+	callbacks     map[int]chan transportResponse
+	notify        map[string]func(json.RawMessage)
+	unknownNotify func(string, json.RawMessage)
+	nextID        int
+	debug         bool
+	timeout       time.Duration
 }
 
 // NewTransport creates a Transport with the given config.
@@ -352,6 +353,14 @@ func (t *Transport) OffNotification(method string) {
 	delete(t.notify, method)
 }
 
+// OnUnknownNotification registers a fallback for notification methods without
+// a dedicated handler.
+func (t *Transport) OnUnknownNotification(handler func(string, json.RawMessage)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.unknownNotify = handler
+}
+
 // IsRunning returns whether the process is running.
 func (t *Transport) IsRunning() bool {
 	t.mu.Lock()
@@ -413,9 +422,12 @@ func (t *Transport) handleLine(line string) {
 
 	t.mu.Lock()
 	handler, ok := t.notify[notif.Method]
+	unknownHandler := t.unknownNotify
 	t.mu.Unlock()
 	if ok {
 		handler(notif.Params)
+	} else if unknownHandler != nil {
+		unknownHandler(notif.Method, notif.Params)
 	}
 }
 
