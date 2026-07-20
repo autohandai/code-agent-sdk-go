@@ -662,6 +662,27 @@ type HookPrePromptEvent struct {
 
 func (e HookPrePromptEvent) eventType() string { return "hook_pre_prompt" }
 
+// TokenAccountingStatus reports whether token counts are measured or
+// unavailable for a response.
+type TokenAccountingStatus string
+
+const (
+	TokenAccountingActual      TokenAccountingStatus = "actual"
+	TokenAccountingUnavailable TokenAccountingStatus = "unavailable"
+)
+
+// HookPostResponseEvent is emitted after the CLI receives a model response.
+type HookPostResponseEvent struct {
+	Type              string                 `json:"type"`
+	TokensUsed        int                    `json:"tokensUsed"`
+	TokensUsageStatus *TokenAccountingStatus `json:"tokensUsageStatus,omitempty"`
+	ToolCallsCount    int                    `json:"toolCallsCount"`
+	Duration          float64                `json:"duration"`
+	Timestamp         string                 `json:"timestamp"`
+}
+
+func (e HookPostResponseEvent) eventType() string { return "hook_post_response" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

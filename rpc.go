@@ -662,6 +662,18 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.hook.postResponse", func(params json.RawMessage) {
+		var event HookPostResponseEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.TokensUsed < 0 || event.ToolCallsCount < 0 || event.Duration < 0 || event.Timestamp == "" {
+			return
+		}
+		if event.TokensUsageStatus != nil && *event.TokensUsageStatus != TokenAccountingActual && *event.TokensUsageStatus != TokenAccountingUnavailable {
+			return
+		}
+		event.Type = "hook_post_response"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

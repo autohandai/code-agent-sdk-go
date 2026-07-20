@@ -479,3 +479,24 @@ func TestHookPrePromptEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed pre-prompt hook event")
 	}
 }
+
+func TestHookPostResponseEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.hook.postResponse","params":{"tokensUsed":0,"tokensUsageStatus":"unavailable","toolCallsCount":2,"duration":18.75,"timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(HookPostResponseEvent)
+		if !ok || event.ToolCallsCount != 2 || event.TokensUsageStatus == nil || *event.TokensUsageStatus != TokenAccountingUnavailable {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed post-response hook event")
+	}
+}
