@@ -279,3 +279,15 @@ func TestRecommendProjectLearningE2E(t *testing.T) {
 	}
 	fixture.assertRequest(t, "autohand.learn.recommend", `"deep":true`)
 }
+
+func TestUpdateProjectLearningE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"updated":1,"unchanged":2,"results":[{"name":"testing","status":"updated"}]}`, "")
+	result, err := fixture.sdk.UpdateProjectLearning(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success || result.Updated != 1 || result.Results[0].Status != LearningUpdated {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.learn.update", `"params":{}`)
+}

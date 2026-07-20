@@ -310,6 +310,30 @@ type LearnRecommendResult struct {
 	Error           string                   `json:"error,omitempty"`
 }
 
+// LearningUpdateStatus is the outcome for one installed skill.
+type LearningUpdateStatus string
+
+const (
+	LearningUpdated   LearningUpdateStatus = "updated"
+	LearningUnchanged LearningUpdateStatus = "unchanged"
+	LearningFailed    LearningUpdateStatus = "failed"
+)
+
+// LearningUpdateEntry reports the update outcome for one skill.
+type LearningUpdateEntry struct {
+	Name   string               `json:"name"`
+	Status LearningUpdateStatus `json:"status"`
+}
+
+// LearnUpdateResult summarizes registry-backed skill updates.
+type LearnUpdateResult struct {
+	Success   bool                  `json:"success"`
+	Updated   int                   `json:"updated"`
+	Unchanged int                   `json:"unchanged"`
+	Results   []LearningUpdateEntry `json:"results"`
+	Error     string                `json:"error,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -551,4 +575,17 @@ func (s *SDK) RecommendProjectLearning(ctx context.Context, params *LearnRecomme
 		return nil, err
 	}
 	return s.client.RecommendProjectLearning(ctx, params)
+}
+
+// UpdateProjectLearning updates installed skills from the registry.
+func (c *RPCClient) UpdateProjectLearning(ctx context.Context) (*LearnUpdateResult, error) {
+	return rpcRequest[LearnUpdateResult](ctx, c, "autohand.learn.update", map[string]interface{}{})
+}
+
+// UpdateProjectLearning updates installed skills from the registry.
+func (s *SDK) UpdateProjectLearning(ctx context.Context) (*LearnUpdateResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.UpdateProjectLearning(ctx)
 }
