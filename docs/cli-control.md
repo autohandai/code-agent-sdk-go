@@ -21,3 +21,9 @@ include the restored session ID, workspace root, and message count.
 
 Use `AttachLatestBrowserHandoff(ctx)` when the newest unexpired handoff should
 be selected without supplying a token.
+
+## Start Auto-Mode
+
+Call `StartAutomode(ctx, params)` with a required prompt and optional iteration,
+completion, worktree, checkpoint, runtime, and cost limits. A successful result
+contains the accepted session ID while execution continues in the CLI.

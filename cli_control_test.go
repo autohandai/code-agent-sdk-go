@@ -94,3 +94,38 @@ func TestBrowserHandoffAttachLatestExactWireAndResult(t *testing.T) {
 	}
 	assertControlRequest(t, nextControlRequest(t, requests), "autohand.browserHandoff.attachLatest", map[string]interface{}{})
 }
+
+func TestAutomodeStartExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	maxIterations := 12
+	completionPromise := "DONE"
+	useWorktree := true
+	checkpointInterval := 3
+	maxRuntime := 45
+	maxCost := 7.5
+
+	result, err := client.StartAutomode(ctx, &AutomodeStartParams{
+		Prompt:             "Ship the release",
+		MaxIterations:      &maxIterations,
+		CompletionPromise:  &completionPromise,
+		UseWorktree:        &useWorktree,
+		CheckpointInterval: &checkpointInterval,
+		MaxRuntime:         &maxRuntime,
+		MaxCost:            &maxCost,
+	})
+	if err != nil || !result.Success || result.SessionID == nil || *result.SessionID != "auto-1" || result.Error != nil {
+		t.Fatalf("StartAutomode() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.start", map[string]interface{}{
+		"prompt":             "Ship the release",
+		"maxIterations":      float64(12),
+		"completionPromise":  "DONE",
+		"useWorktree":        true,
+		"checkpointInterval": float64(3),
+		"maxRuntime":         float64(45),
+		"maxCost":            7.5,
+	})
+}

@@ -111,6 +111,14 @@ func (c *RPCClient) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHan
 	return rpcRequest[BrowserHandoffAttachResult](ctx, c, "autohand.browserHandoff.attachLatest", map[string]interface{}{})
 }
 
+// StartAutomode starts an auto-mode task and returns when the CLI accepts it.
+func (c *RPCClient) StartAutomode(ctx context.Context, params *AutomodeStartParams) (*AutomodeStartResult, error) {
+	if params == nil {
+		params = &AutomodeStartParams{}
+	}
+	return rpcRequest[AutomodeStartResult](ctx, c, "autohand.automode.start", params)
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{

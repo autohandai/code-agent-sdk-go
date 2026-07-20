@@ -319,6 +319,11 @@ func (a *Agent) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHandoff
 	return a.sdk.AttachLatestBrowserHandoff(ctx)
 }
 
+// StartAutomode starts an auto-mode task and returns when the CLI accepts it.
+func (a *Agent) StartAutomode(ctx context.Context, params *AutomodeStartParams) (*AutomodeStartResult, error) {
+	return a.sdk.StartAutomode(ctx, params)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

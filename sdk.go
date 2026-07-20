@@ -375,6 +375,14 @@ func (s *SDK) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHandoffAt
 	return s.client.AttachLatestBrowserHandoff(ctx)
 }
 
+// StartAutomode starts an auto-mode task and returns when the CLI accepts it.
+func (s *SDK) StartAutomode(ctx context.Context, params *AutomodeStartParams) (*AutomodeStartResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.StartAutomode(ctx, params)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {
