@@ -652,6 +652,16 @@ type HookPostToolEvent struct {
 
 func (e HookPostToolEvent) eventType() string { return "hook_post_tool" }
 
+// HookPrePromptEvent is emitted before the CLI sends a prompt to its model.
+type HookPrePromptEvent struct {
+	Type           string   `json:"type"`
+	Instruction    string   `json:"instruction"`
+	MentionedFiles []string `json:"mentionedFiles"`
+	Timestamp      string   `json:"timestamp"`
+}
+
+func (e HookPrePromptEvent) eventType() string { return "hook_pre_prompt" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

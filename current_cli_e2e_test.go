@@ -458,3 +458,24 @@ func TestHookPostToolEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed post-tool hook event")
 	}
 }
+
+func TestHookPrePromptEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.hook.prePrompt","params":{"instruction":"Review the SDK","mentionedFiles":["sdk.go","rpc.go"],"timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(HookPrePromptEvent)
+		if !ok || event.Instruction != "Review the SDK" || len(event.MentionedFiles) != 2 {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed pre-prompt hook event")
+	}
+}

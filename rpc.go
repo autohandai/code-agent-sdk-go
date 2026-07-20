@@ -653,6 +653,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.hook.prePrompt", func(params json.RawMessage) {
+		var event HookPrePromptEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.Instruction == "" || event.MentionedFiles == nil || event.Timestamp == "" {
+			return
+		}
+		event.Type = "hook_pre_prompt"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)
