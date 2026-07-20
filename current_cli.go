@@ -161,6 +161,15 @@ type SessionLookupFailure struct {
 func (SessionLookupFailure) sessionLookupResult() {}
 func (SessionLookupFailure) Succeeded() bool      { return false }
 
+// SessionAttachResult reports the active session after an attach request.
+type SessionAttachResult struct {
+	Success       bool   `json:"success"`
+	SessionID     string `json:"sessionId,omitempty"`
+	WorkspaceRoot string `json:"workspaceRoot,omitempty"`
+	MessageCount  int    `json:"messageCount,omitempty"`
+	Error         string `json:"error,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -299,4 +308,22 @@ func (s *SDK) GetSession(ctx context.Context, sessionID string) (GetSessionResul
 		return nil, err
 	}
 	return s.client.GetSession(ctx, sessionID)
+}
+
+// AttachSession restores a stored CLI session into the active RPC process.
+func (c *RPCClient) AttachSession(ctx context.Context, sessionID string) (*SessionAttachResult, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, fmt.Errorf("attach session: session ID is required")
+	}
+	return rpcRequest[SessionAttachResult](ctx, c, "autohand.session.attach", map[string]string{
+		"sessionId": sessionID,
+	})
+}
+
+// AttachSession restores a stored CLI session into the active RPC process.
+func (s *SDK) AttachSession(ctx context.Context, sessionID string) (*SessionAttachResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.AttachSession(ctx, sessionID)
 }

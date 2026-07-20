@@ -191,3 +191,19 @@ func TestGetSessionE2E(t *testing.T) {
 		t.Fatal("expected malformed success payload to fail")
 	}
 }
+
+func TestAttachSessionE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"sessionId":"session-2","workspaceRoot":"/workspace","messageCount":6}`, "")
+	result, err := fixture.sdk.AttachSession(fixture.ctx, "session-2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success || result.SessionID != "session-2" || result.MessageCount != 6 {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.session.attach", `"sessionId":"session-2"`)
+
+	if _, err := fixture.sdk.AttachSession(fixture.ctx, " "); err == nil {
+		t.Fatal("expected blank session ID to fail before transport")
+	}
+}
