@@ -307,3 +307,15 @@ func TestGenerateProjectSkillE2E(t *testing.T) {
 		t.Fatal("expected invalid scope to fail before transport")
 	}
 }
+
+func TestGetToolsRegistryE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"tools":[{"name":"read_file","description":"Read a file","requiresApproval":false,"source":"builtin"},{"name":"review","description":"Review code","source":"extension","scope":"project","extensionId":"quality"}],"diagnostics":[{"file":"broken.json","reason":"invalid schema"}]}`, "")
+	result, err := fixture.sdk.GetToolsRegistry(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Tools) != 2 || result.Tools[1].Source != ToolRegistryExtension || result.Tools[0].RequiresApproval == nil || *result.Tools[0].RequiresApproval || len(result.Diagnostics) != 1 {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.getToolsRegistry", `"params":{}`)
+}

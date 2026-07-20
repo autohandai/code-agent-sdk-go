@@ -367,6 +367,53 @@ type LearnGenerateResult struct {
 	Error     string `json:"error,omitempty"`
 }
 
+// ToolRegistrySource identifies where a registered tool came from.
+type ToolRegistrySource string
+
+const (
+	ToolRegistryBuiltin   ToolRegistrySource = "builtin"
+	ToolRegistryMeta      ToolRegistrySource = "meta"
+	ToolRegistryExtension ToolRegistrySource = "extension"
+)
+
+// ToolRegistryScope is the persistence scope of a custom tool.
+type ToolRegistryScope string
+
+const (
+	ToolRegistryUser    ToolRegistryScope = "user"
+	ToolRegistryProject ToolRegistryScope = "project"
+)
+
+// ToolRegistryEntry describes one built-in, metadata, or extension tool.
+type ToolRegistryEntry struct {
+	Name             string             `json:"name"`
+	Description      string             `json:"description"`
+	RequiresApproval *bool              `json:"requiresApproval,omitempty"`
+	ApprovalMessage  string             `json:"approvalMessage,omitempty"`
+	Source           ToolRegistrySource `json:"source"`
+	Scope            ToolRegistryScope  `json:"scope,omitempty"`
+	Disabled         *bool              `json:"disabled,omitempty"`
+	CreatedAt        string             `json:"createdAt,omitempty"`
+	SchemaVersion    *int               `json:"schemaVersion,omitempty"`
+	HandlerPreview   string             `json:"handlerPreview,omitempty"`
+	ReuseHint        string             `json:"reuseHint,omitempty"`
+	ExtensionID      string             `json:"extensionId,omitempty"`
+	ExtensionVersion string             `json:"extensionVersion,omitempty"`
+}
+
+// ToolRegistryDiagnostic describes one invalid tool definition skipped by the
+// CLI.
+type ToolRegistryDiagnostic struct {
+	File   string `json:"file"`
+	Reason string `json:"reason"`
+}
+
+// GetToolsRegistryResult contains the live tool registry and load diagnostics.
+type GetToolsRegistryResult struct {
+	Tools       []ToolRegistryEntry      `json:"tools"`
+	Diagnostics []ToolRegistryDiagnostic `json:"diagnostics"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -639,4 +686,17 @@ func (s *SDK) GenerateProjectSkill(ctx context.Context, params *LearnGeneratePar
 		return nil, err
 	}
 	return s.client.GenerateProjectSkill(ctx, params)
+}
+
+// GetToolsRegistry returns all registered tools and definition diagnostics.
+func (c *RPCClient) GetToolsRegistry(ctx context.Context) (*GetToolsRegistryResult, error) {
+	return rpcRequest[GetToolsRegistryResult](ctx, c, "autohand.getToolsRegistry", map[string]interface{}{})
+}
+
+// GetToolsRegistry returns all registered tools and definition diagnostics.
+func (s *SDK) GetToolsRegistry(ctx context.Context) (*GetToolsRegistryResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetToolsRegistry(ctx)
 }
