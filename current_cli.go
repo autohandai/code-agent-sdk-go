@@ -2,6 +2,7 @@ package autohand
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 )
@@ -128,6 +129,38 @@ type GetHistoryResult struct {
 	TotalItems  int                   `json:"totalItems"`
 }
 
+// GetSessionResult is a discriminated result for a session lookup. Use a type
+// switch to distinguish SessionDetails from SessionLookupFailure.
+type GetSessionResult interface {
+	sessionLookupResult()
+	Succeeded() bool
+}
+
+// SessionDetails contains the complete stored session payload.
+type SessionDetails struct {
+	SessionID     string       `json:"sessionId"`
+	ProjectName   string       `json:"projectName"`
+	Model         string       `json:"model"`
+	MessageCount  int          `json:"messageCount"`
+	Status        string       `json:"status"`
+	CreatedAt     string       `json:"createdAt"`
+	LastActiveAt  string       `json:"lastActiveAt"`
+	Summary       string       `json:"summary,omitempty"`
+	Messages      []RPCMessage `json:"messages"`
+	WorkspaceRoot string       `json:"workspaceRoot"`
+}
+
+func (SessionDetails) sessionLookupResult() {}
+func (SessionDetails) Succeeded() bool      { return true }
+
+// SessionLookupFailure reports why a stored session could not be loaded.
+type SessionLookupFailure struct {
+	Error string `json:"error,omitempty"`
+}
+
+func (SessionLookupFailure) sessionLookupResult() {}
+func (SessionLookupFailure) Succeeded() bool      { return false }
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -220,4 +253,50 @@ func (s *SDK) GetHistory(ctx context.Context, params *GetHistoryParams) (*GetHis
 		return nil, err
 	}
 	return s.client.GetHistory(ctx, params)
+}
+
+// GetSession returns either complete session details or an explicit lookup
+// failure. Malformed success payloads are rejected instead of becoming
+// partially initialized details.
+func (c *RPCClient) GetSession(ctx context.Context, sessionID string) (GetSessionResult, error) {
+	if strings.TrimSpace(sessionID) == "" {
+		return nil, fmt.Errorf("get session: session ID is required")
+	}
+	raw, err := c.transport.Request(ctx, "autohand.getSession", map[string]string{"sessionId": sessionID})
+	if err != nil {
+		return nil, err
+	}
+	var envelope struct {
+		Success *bool `json:"success"`
+	}
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		return nil, fmt.Errorf("unmarshal autohand.getSession result: %w", err)
+	}
+	if envelope.Success == nil {
+		return nil, fmt.Errorf("unmarshal autohand.getSession result: missing success discriminator")
+	}
+	if !*envelope.Success {
+		var failure SessionLookupFailure
+		if err := json.Unmarshal(raw, &failure); err != nil {
+			return nil, fmt.Errorf("unmarshal autohand.getSession failure: %w", err)
+		}
+		return failure, nil
+	}
+	var details SessionDetails
+	if err := json.Unmarshal(raw, &details); err != nil {
+		return nil, fmt.Errorf("unmarshal autohand.getSession details: %w", err)
+	}
+	if strings.TrimSpace(details.SessionID) == "" || strings.TrimSpace(details.WorkspaceRoot) == "" || details.Messages == nil {
+		return nil, fmt.Errorf("unmarshal autohand.getSession details: missing required session fields")
+	}
+	return details, nil
+}
+
+// GetSession returns either complete session details or an explicit lookup
+// failure.
+func (s *SDK) GetSession(ctx context.Context, sessionID string) (GetSessionResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetSession(ctx, sessionID)
 }

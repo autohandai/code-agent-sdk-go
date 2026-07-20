@@ -163,3 +163,31 @@ func TestGetHistoryE2E(t *testing.T) {
 		t.Fatal("expected negative page to fail before transport")
 	}
 }
+
+func TestGetSessionE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"sessionId":"session-1","projectName":"tin","model":"gpt-5","messageCount":1,"status":"completed","createdAt":"now","lastActiveAt":"later","messages":[{"id":"message-1","role":"assistant","content":"done","timestamp":"later"}],"workspaceRoot":"/workspace"}`, "")
+	result, err := fixture.sdk.GetSession(fixture.ctx, "session-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	details, ok := result.(SessionDetails)
+	if !ok || !details.Succeeded() || len(details.Messages) != 1 {
+		t.Fatalf("result = %#v", result)
+	}
+	fixture.assertRequest(t, "autohand.getSession", `"sessionId":"session-1"`)
+
+	failureFixture := newCurrentCLIFixture(t, `{"success":false,"error":"not found"}`, "")
+	failure, err := failureFixture.sdk.GetSession(failureFixture.ctx, "missing")
+	if err != nil {
+		t.Fatal(err)
+	}
+	missing, ok := failure.(SessionLookupFailure)
+	if !ok || missing.Succeeded() || missing.Error != "not found" {
+		t.Fatalf("failure = %#v", failure)
+	}
+
+	malformed := newCurrentCLIFixture(t, `{"success":true,"sessionId":"partial"}`, "")
+	if _, err := malformed.sdk.GetSession(malformed.ctx, "partial"); err == nil {
+		t.Fatal("expected malformed success payload to fail")
+	}
+}
