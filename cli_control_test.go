@@ -129,3 +129,16 @@ func TestAutomodeStartExactWireAndResult(t *testing.T) {
 		"maxCost":            7.5,
 	})
 }
+
+func TestAutomodeStatusExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := client.GetAutomodeStatus(ctx)
+	if err != nil || !result.Active || result.Paused || result.State == nil || result.State.SessionID != "auto-1" || result.State.Status != AutomodeStatusRunning || result.State.CurrentIteration != 4 || result.State.MaxIterations != 12 || result.State.FilesCreated != 2 || result.State.FilesModified != 5 || result.State.Branch == nil || *result.State.Branch != "autohand/auto-1" || result.State.LastCheckpoint == nil || result.State.LastCheckpoint.Commit != "abc123" {
+		t.Fatalf("GetAutomodeStatus() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.status", map[string]interface{}{})
+}

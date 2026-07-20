@@ -198,6 +198,15 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 				responseResult = map[string]interface{}{"success": false}
 			case "autohand.automode.start":
 				responseResult = map[string]interface{}{"success": true, "sessionId": "auto-1"}
+			case "autohand.automode.status":
+				responseResult = map[string]interface{}{
+					"active": true, "paused": false,
+					"state": map[string]interface{}{
+						"sessionId": "auto-1", "status": "running", "currentIteration": 4, "maxIterations": 12,
+						"filesCreated": 2, "filesModified": 5, "branch": "autohand/auto-1",
+						"lastCheckpoint": map[string]interface{}{"commit": "abc123", "message": "checkpoint", "timestamp": "2026-07-20T01:02:00Z"},
+					},
+				}
 			case "autohand.autoresearch.start":
 				result["instruction"] = "Run the next experiment"
 			case "autohand.autoresearch.status":

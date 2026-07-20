@@ -27,3 +27,8 @@ be selected without supplying a token.
 Call `StartAutomode(ctx, params)` with a required prompt and optional iteration,
 completion, worktree, checkpoint, runtime, and cost limits. A successful result
 contains the accepted session ID while execution continues in the CLI.
+
+## Inspect Auto-Mode Status
+
+Call `GetAutomodeStatus(ctx)` for the live `Active` and `Paused` flags plus the
+optional persisted state, iteration and file counters, branch, and checkpoint.

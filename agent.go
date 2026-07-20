@@ -324,6 +324,11 @@ func (a *Agent) StartAutomode(ctx context.Context, params *AutomodeStartParams) 
 	return a.sdk.StartAutomode(ctx, params)
 }
 
+// GetAutomodeStatus returns live flags and optional persisted session state.
+func (a *Agent) GetAutomodeStatus(ctx context.Context) (*AutomodeStatusResult, error) {
+	return a.sdk.GetAutomodeStatus(ctx)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

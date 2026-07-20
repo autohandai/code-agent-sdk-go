@@ -17,3 +17,40 @@ type AutomodeStartResult struct {
 	SessionID *string `json:"sessionId,omitempty"`
 	Error     *string `json:"error,omitempty"`
 }
+
+// AutomodeStatus is the persisted lifecycle status of an auto-mode session.
+type AutomodeStatus string
+
+const (
+	AutomodeStatusRunning   AutomodeStatus = "running"
+	AutomodeStatusPaused    AutomodeStatus = "paused"
+	AutomodeStatusCompleted AutomodeStatus = "completed"
+	AutomodeStatusCancelled AutomodeStatus = "cancelled"
+	AutomodeStatusFailed    AutomodeStatus = "failed"
+)
+
+// AutomodeCheckpoint describes the latest persisted checkpoint.
+type AutomodeCheckpoint struct {
+	Commit    string `json:"commit"`
+	Message   string `json:"message"`
+	Timestamp string `json:"timestamp"`
+}
+
+// AutomodeState is the persisted session state returned by the CLI.
+type AutomodeState struct {
+	SessionID        string              `json:"sessionId"`
+	Status           AutomodeStatus      `json:"status"`
+	CurrentIteration int                 `json:"currentIteration"`
+	MaxIterations    int                 `json:"maxIterations"`
+	FilesCreated     int                 `json:"filesCreated"`
+	FilesModified    int                 `json:"filesModified"`
+	Branch           *string             `json:"branch,omitempty"`
+	LastCheckpoint   *AutomodeCheckpoint `json:"lastCheckpoint,omitempty"`
+}
+
+// AutomodeStatusResult combines live flags with optional persisted state.
+type AutomodeStatusResult struct {
+	Active bool           `json:"active"`
+	Paused bool           `json:"paused"`
+	State  *AutomodeState `json:"state,omitempty"`
+}

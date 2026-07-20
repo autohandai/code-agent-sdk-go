@@ -383,6 +383,14 @@ func (s *SDK) StartAutomode(ctx context.Context, params *AutomodeStartParams) (*
 	return s.client.StartAutomode(ctx, params)
 }
 
+// GetAutomodeStatus returns live flags and optional persisted session state.
+func (s *SDK) GetAutomodeStatus(ctx context.Context) (*AutomodeStatusResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetAutomodeStatus(ctx)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {

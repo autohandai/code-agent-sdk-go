@@ -134,6 +134,7 @@ handoff, err := sdk.CreateBrowserHandoff(ctx, &autohand.BrowserHandoffCreatePara
 attached, err := sdk.AttachBrowserHandoff(ctx, &autohand.BrowserHandoffAttachParams{Token: token})
 latest, err := sdk.AttachLatestBrowserHandoff(ctx)
 started, err := sdk.StartAutomode(ctx, &autohand.AutomodeStartParams{Prompt: "Ship the release"})
+status, err := sdk.GetAutomodeStatus(ctx)
 ```
 
 `Start` skips the permission-mode RPC for the default interactive mode.

@@ -119,6 +119,11 @@ func (c *RPCClient) StartAutomode(ctx context.Context, params *AutomodeStartPara
 	return rpcRequest[AutomodeStartResult](ctx, c, "autohand.automode.start", params)
 }
 
+// GetAutomodeStatus returns live flags and optional persisted session state.
+func (c *RPCClient) GetAutomodeStatus(ctx context.Context) (*AutomodeStatusResult, error) {
+	return rpcRequest[AutomodeStatusResult](ctx, c, "autohand.automode.status", map[string]interface{}{})
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{
