@@ -18,6 +18,12 @@ type DirectoryAccessResponseResult struct {
 	Success bool `json:"success"`
 }
 
+// DirectoryAccessAcknowledgedResult reports whether the CLI matched a pending
+// directory access request and extended its response deadline.
+type DirectoryAccessAcknowledgedResult struct {
+	Success bool `json:"success"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -56,4 +62,23 @@ func (s *SDK) RespondToDirectoryAccess(ctx context.Context, requestID string, gr
 		return nil, err
 	}
 	return s.client.RespondToDirectoryAccess(ctx, requestID, granted)
+}
+
+// AcknowledgeDirectoryAccess confirms receipt of a directory access request.
+func (c *RPCClient) AcknowledgeDirectoryAccess(ctx context.Context, requestID string) (*DirectoryAccessAcknowledgedResult, error) {
+	if strings.TrimSpace(requestID) == "" {
+		return nil, fmt.Errorf("acknowledge directory access: request ID is required")
+	}
+	return rpcRequest[DirectoryAccessAcknowledgedResult](ctx, c, "autohand.directoryAccessAcknowledged", map[string]string{
+		"requestId": requestID,
+	})
+}
+
+// AcknowledgeDirectoryAccess confirms that a directory access request reached
+// the SDK client.
+func (s *SDK) AcknowledgeDirectoryAccess(ctx context.Context, requestID string) (*DirectoryAccessAcknowledgedResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.AcknowledgeDirectoryAccess(ctx, requestID)
 }
