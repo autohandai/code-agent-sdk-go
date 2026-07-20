@@ -147,3 +147,19 @@ func TestDecideChangesE2E(t *testing.T) {
 		t.Fatal("expected empty selected change list to fail before transport")
 	}
 }
+
+func TestGetHistoryE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"sessions":[{"sessionId":"session-1","createdAt":"now","lastActiveAt":"later","projectName":"tin","model":"gpt-5","messageCount":4,"status":"completed"}],"currentPage":2,"totalPages":3,"totalItems":5}`, "")
+	result, err := fixture.sdk.GetHistory(fixture.ctx, &GetHistoryParams{Page: 2, PageSize: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.TotalItems != 5 || len(result.Sessions) != 1 || result.Sessions[0].Status != SessionHistoryCompleted {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.getHistory", `"page":2`, `"pageSize":1`)
+
+	if _, err := fixture.sdk.GetHistory(fixture.ctx, &GetHistoryParams{Page: -1}); err == nil {
+		t.Fatal("expected negative page to fail before transport")
+	}
+}

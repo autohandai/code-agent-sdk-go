@@ -80,6 +80,54 @@ type ChangesDecisionResult struct {
 	Errors       []ChangesDecisionError `json:"errors,omitempty"`
 }
 
+// SessionHistoryStatus is the terminal or live state stored for a session.
+type SessionHistoryStatus string
+
+const (
+	SessionHistoryActive    SessionHistoryStatus = "active"
+	SessionHistoryCompleted SessionHistoryStatus = "completed"
+	SessionHistoryCrashed   SessionHistoryStatus = "crashed"
+)
+
+// GetHistoryParams controls pagination of stored sessions. Zero values ask the
+// CLI to use its defaults.
+type GetHistoryParams struct {
+	Page     int `json:"page,omitempty"`
+	PageSize int `json:"pageSize,omitempty"`
+}
+
+func (p *GetHistoryParams) validate() error {
+	if p == nil {
+		return nil
+	}
+	if p.Page < 0 {
+		return fmt.Errorf("get history: page cannot be negative")
+	}
+	if p.PageSize < 0 {
+		return fmt.Errorf("get history: page size cannot be negative")
+	}
+	return nil
+}
+
+// SessionHistoryEntry is a summary of one stored session.
+type SessionHistoryEntry struct {
+	SessionID    string               `json:"sessionId"`
+	CreatedAt    string               `json:"createdAt"`
+	LastActiveAt string               `json:"lastActiveAt"`
+	ProjectName  string               `json:"projectName"`
+	Model        string               `json:"model"`
+	MessageCount int                  `json:"messageCount"`
+	Status       SessionHistoryStatus `json:"status"`
+}
+
+// GetHistoryResult contains one page of stored sessions.
+type GetHistoryResult struct {
+	Sessions    []SessionHistoryEntry `json:"sessions"`
+	CurrentPage int                   `json:"currentPage"`
+	TotalPages  int                   `json:"totalPages"`
+	TotalItems  int                   `json:"totalItems"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -153,4 +201,23 @@ func (s *SDK) DecideChanges(ctx context.Context, params *ChangesDecisionParams) 
 		return nil, err
 	}
 	return s.client.DecideChanges(ctx, params)
+}
+
+// GetHistory returns a page of stored CLI sessions.
+func (c *RPCClient) GetHistory(ctx context.Context, params *GetHistoryParams) (*GetHistoryResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	if params == nil {
+		params = &GetHistoryParams{}
+	}
+	return rpcRequest[GetHistoryResult](ctx, c, "autohand.getHistory", params)
+}
+
+// GetHistory returns a page of stored CLI sessions.
+func (s *SDK) GetHistory(ctx context.Context, params *GetHistoryParams) (*GetHistoryResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetHistory(ctx, params)
 }
