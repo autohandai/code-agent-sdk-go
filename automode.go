@@ -54,3 +54,9 @@ type AutomodeStatusResult struct {
 	Paused bool           `json:"paused"`
 	State  *AutomodeState `json:"state,omitempty"`
 }
+
+// AutomodePauseResult reports the business result of a pause request.
+type AutomodePauseResult struct {
+	Success bool    `json:"success"`
+	Error   *string `json:"error,omitempty"`
+}

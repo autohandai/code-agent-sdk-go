@@ -32,3 +32,8 @@ contains the accepted session ID while execution continues in the CLI.
 
 Call `GetAutomodeStatus(ctx)` for the live `Active` and `Paused` flags plus the
 optional persisted state, iteration and file counters, branch, and checkpoint.
+
+## Pause Auto-Mode
+
+Call `PauseAutomode(ctx)` to pause the active session. CLI business failures
+remain typed results with `Success == false` and an optional `Error`.

@@ -391,6 +391,14 @@ func (s *SDK) GetAutomodeStatus(ctx context.Context) (*AutomodeStatusResult, err
 	return s.client.GetAutomodeStatus(ctx)
 }
 
+// PauseAutomode pauses the active auto-mode session.
+func (s *SDK) PauseAutomode(ctx context.Context) (*AutomodePauseResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.PauseAutomode(ctx)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {

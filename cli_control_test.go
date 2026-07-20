@@ -142,3 +142,16 @@ func TestAutomodeStatusExactWireAndResult(t *testing.T) {
 	}
 	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.status", map[string]interface{}{})
 }
+
+func TestAutomodePauseExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := client.PauseAutomode(ctx)
+	if err != nil || result.Success || result.Error == nil || *result.Error != "No auto-mode session is running" {
+		t.Fatalf("PauseAutomode() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.pause", map[string]interface{}{})
+}

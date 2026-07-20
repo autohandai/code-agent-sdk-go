@@ -124,6 +124,11 @@ func (c *RPCClient) GetAutomodeStatus(ctx context.Context) (*AutomodeStatusResul
 	return rpcRequest[AutomodeStatusResult](ctx, c, "autohand.automode.status", map[string]interface{}{})
 }
 
+// PauseAutomode pauses the active auto-mode session.
+func (c *RPCClient) PauseAutomode(ctx context.Context) (*AutomodePauseResult, error) {
+	return rpcRequest[AutomodePauseResult](ctx, c, "autohand.automode.pause", map[string]interface{}{})
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{
