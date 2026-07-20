@@ -238,6 +238,39 @@ type MCPSetVSCodeToolsResult struct {
 	Success bool `json:"success"`
 }
 
+// MCPInvocationResponseParams completes a VS Code MCP invocation requested by
+// the CLI.
+type MCPInvocationResponseParams struct {
+	RequestID string  `json:"requestId"`
+	Success   bool    `json:"success"`
+	Result    *string `json:"result,omitempty"`
+	Error     string  `json:"error,omitempty"`
+}
+
+func (p *MCPInvocationResponseParams) validate() error {
+	if p == nil || strings.TrimSpace(p.RequestID) == "" {
+		return fmt.Errorf("respond to MCP invocation: request ID is required")
+	}
+	if p.Success && p.Error != "" {
+		return fmt.Errorf("respond to MCP invocation: successful responses cannot include an error")
+	}
+	if !p.Success {
+		if strings.TrimSpace(p.Error) == "" {
+			return fmt.Errorf("respond to MCP invocation: failed responses require an error")
+		}
+		if p.Result != nil {
+			return fmt.Errorf("respond to MCP invocation: failed responses cannot include a result")
+		}
+	}
+	return nil
+}
+
+// MCPInvocationResponseResult reports whether a pending invocation accepted
+// the response.
+type MCPInvocationResponseResult struct {
+	Success bool `json:"success"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -445,4 +478,20 @@ func (s *SDK) SetVSCodeMCPTools(ctx context.Context, params *MCPSetVSCodeToolsPa
 		return nil, err
 	}
 	return s.client.SetVSCodeMCPTools(ctx, params)
+}
+
+// RespondToMCPInvocation completes a VS Code MCP invocation.
+func (c *RPCClient) RespondToMCPInvocation(ctx context.Context, params *MCPInvocationResponseParams) (*MCPInvocationResponseResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[MCPInvocationResponseResult](ctx, c, "autohand.mcp.invokeResponse", params)
+}
+
+// RespondToMCPInvocation completes a VS Code MCP invocation.
+func (s *SDK) RespondToMCPInvocation(ctx context.Context, params *MCPInvocationResponseParams) (*MCPInvocationResponseResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.RespondToMCPInvocation(ctx, params)
 }

@@ -248,3 +248,22 @@ func TestSetVSCodeMCPToolsE2E(t *testing.T) {
 		t.Fatal("expected malformed tool descriptor to fail before transport")
 	}
 }
+
+func TestRespondToMCPInvocationE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, "")
+	result, err := fixture.sdk.RespondToMCPInvocation(fixture.ctx, &MCPInvocationResponseParams{
+		RequestID: "invoke-1", Success: false, Error: "tool unavailable",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.mcp.invokeResponse", `"requestId":"invoke-1"`, `"success":false`, `"error":"tool unavailable"`)
+
+	invalidResult := "unexpected"
+	if _, err := fixture.sdk.RespondToMCPInvocation(fixture.ctx, &MCPInvocationResponseParams{RequestID: "invoke-2", Result: &invalidResult, Error: "failed"}); err == nil {
+		t.Fatal("expected ambiguous failed response to fail before transport")
+	}
+}
