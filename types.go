@@ -639,6 +639,19 @@ type HookPreToolEvent struct {
 
 func (e HookPreToolEvent) eventType() string { return "hook_pre_tool" }
 
+// HookPostToolEvent is emitted after hook processing for a tool completes.
+type HookPostToolEvent struct {
+	Type      string  `json:"type"`
+	ToolID    string  `json:"toolId"`
+	ToolName  string  `json:"toolName"`
+	Success   bool    `json:"success"`
+	Duration  float64 `json:"duration"`
+	Output    *string `json:"output,omitempty"`
+	Timestamp string  `json:"timestamp"`
+}
+
+func (e HookPostToolEvent) eventType() string { return "hook_post_tool" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

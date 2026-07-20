@@ -644,6 +644,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.hook.postTool", func(params json.RawMessage) {
+		var event HookPostToolEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.ToolID == "" || event.ToolName == "" || event.Duration < 0 || event.Timestamp == "" {
+			return
+		}
+		event.Type = "hook_post_tool"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)

@@ -437,3 +437,24 @@ func TestHookPreToolEventE2E(t *testing.T) {
 		t.Fatal("timed out waiting for typed pre-tool hook event")
 	}
 }
+
+func TestHookPostToolEventE2E(t *testing.T) {
+	notification := `{"jsonrpc":"2.0","method":"autohand.hook.postTool","params":{"toolId":"tool-1","toolName":"read_file","success":true,"duration":12.5,"output":"contents","timestamp":"now"}}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		event, ok := received.(HookPostToolEvent)
+		if !ok || !event.Success || event.Duration != 12.5 || event.Output == nil || *event.Output != "contents" {
+			t.Fatalf("event = %#v", received)
+		}
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for typed post-tool hook event")
+	}
+}
