@@ -127,3 +127,23 @@ func TestAcknowledgeDirectoryAccessE2E(t *testing.T) {
 		t.Fatal("expected blank request ID to fail before transport")
 	}
 }
+
+func TestDecideChangesE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"appliedCount":1,"skippedCount":2,"errors":[]}`, "")
+	result, err := fixture.sdk.DecideChanges(fixture.ctx, &ChangesDecisionParams{
+		BatchID:           "batch-1",
+		Action:            ChangesAcceptSelected,
+		SelectedChangeIDs: []string{"change-2"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success || result.AppliedCount != 1 || result.SkippedCount != 2 {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.changesDecision", `"batchId":"batch-1"`, `"action":"accept_selected"`, `"selectedChangeIds":["change-2"]`)
+
+	if _, err := fixture.sdk.DecideChanges(fixture.ctx, &ChangesDecisionParams{BatchID: "batch-1", Action: ChangesAcceptSelected}); err == nil {
+		t.Fatal("expected empty selected change list to fail before transport")
+	}
+}

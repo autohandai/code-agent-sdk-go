@@ -24,6 +24,62 @@ type DirectoryAccessAcknowledgedResult struct {
 	Success bool `json:"success"`
 }
 
+// ChangesDecisionAction identifies how a multi-file preview batch should be
+// applied.
+type ChangesDecisionAction string
+
+const (
+	ChangesAcceptAll      ChangesDecisionAction = "accept_all"
+	ChangesRejectAll      ChangesDecisionAction = "reject_all"
+	ChangesAcceptSelected ChangesDecisionAction = "accept_selected"
+)
+
+// ChangesDecisionParams selects the disposition of a pending preview batch.
+type ChangesDecisionParams struct {
+	BatchID           string                `json:"batchId"`
+	Action            ChangesDecisionAction `json:"action"`
+	SelectedChangeIDs []string              `json:"selectedChangeIds,omitempty"`
+}
+
+func (p *ChangesDecisionParams) validate() error {
+	if p == nil || strings.TrimSpace(p.BatchID) == "" {
+		return fmt.Errorf("decide changes: batch ID is required")
+	}
+	switch p.Action {
+	case ChangesAcceptAll, ChangesRejectAll:
+		if len(p.SelectedChangeIDs) != 0 {
+			return fmt.Errorf("decide changes: selected change IDs require %q", ChangesAcceptSelected)
+		}
+	case ChangesAcceptSelected:
+		if len(p.SelectedChangeIDs) == 0 {
+			return fmt.Errorf("decide changes: at least one selected change ID is required")
+		}
+		for _, id := range p.SelectedChangeIDs {
+			if strings.TrimSpace(id) == "" {
+				return fmt.Errorf("decide changes: selected change IDs cannot be blank")
+			}
+		}
+	default:
+		return fmt.Errorf("decide changes: unsupported action %q", p.Action)
+	}
+	return nil
+}
+
+// ChangesDecisionError describes one proposed change that could not be
+// applied.
+type ChangesDecisionError struct {
+	ChangeID string `json:"changeId"`
+	Error    string `json:"error"`
+}
+
+// ChangesDecisionResult summarizes application of a preview batch.
+type ChangesDecisionResult struct {
+	Success      bool                   `json:"success"`
+	AppliedCount int                    `json:"appliedCount"`
+	SkippedCount int                    `json:"skippedCount"`
+	Errors       []ChangesDecisionError `json:"errors,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -81,4 +137,20 @@ func (s *SDK) AcknowledgeDirectoryAccess(ctx context.Context, requestID string) 
 		return nil, err
 	}
 	return s.client.AcknowledgeDirectoryAccess(ctx, requestID)
+}
+
+// DecideChanges applies or rejects a multi-file preview batch.
+func (c *RPCClient) DecideChanges(ctx context.Context, params *ChangesDecisionParams) (*ChangesDecisionResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[ChangesDecisionResult](ctx, c, "autohand.changesDecision", params)
+}
+
+// DecideChanges applies or rejects a multi-file preview batch.
+func (s *SDK) DecideChanges(ctx context.Context, params *ChangesDecisionParams) (*ChangesDecisionResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.DecideChanges(ctx, params)
 }
