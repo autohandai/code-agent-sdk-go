@@ -683,6 +683,18 @@ type HookPostResponseEvent struct {
 
 func (e HookPostResponseEvent) eventType() string { return "hook_post_response" }
 
+// MCPInvocationRequestEvent asks the SDK client to execute a VS Code MCP tool
+// and answer with RespondToMCPInvocation.
+type MCPInvocationRequestEvent struct {
+	Type      string                 `json:"type"`
+	RequestID string                 `json:"requestId"`
+	ToolName  string                 `json:"toolName"`
+	Args      map[string]interface{} `json:"args"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e MCPInvocationRequestEvent) eventType() string { return "mcp_invoke_request" }
+
 // AgentStartEvent is emitted when the agent starts.
 type AgentStartEvent struct {
 	Type      string `json:"type"`

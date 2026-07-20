@@ -674,6 +674,15 @@ func (c *RPCClient) setupNotifications() {
 		c.queueEvent(event)
 	})
 
+	c.transport.OnNotification("autohand.mcp.invokeRequest", func(params json.RawMessage) {
+		var event MCPInvocationRequestEvent
+		if err := json.Unmarshal(params, &event); err != nil || event.RequestID == "" || event.ToolName == "" || event.Args == nil || event.Timestamp == "" {
+			return
+		}
+		event.Type = "mcp_invoke_request"
+		c.queueEvent(event)
+	})
+
 	c.transport.OnNotification("autohand.agentStart", func(params json.RawMessage) {
 		var e AgentStartEvent
 		json.Unmarshal(params, &e)
