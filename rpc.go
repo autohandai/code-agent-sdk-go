@@ -98,6 +98,14 @@ func (c *RPCClient) CreateBrowserHandoff(ctx context.Context, params *BrowserHan
 	return rpcRequest[BrowserHandoffCreateResult](ctx, c, "autohand.browserHandoff.create", params)
 }
 
+// AttachBrowserHandoff restores the session referenced by a handoff token.
+func (c *RPCClient) AttachBrowserHandoff(ctx context.Context, params *BrowserHandoffAttachParams) (*BrowserHandoffAttachResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[BrowserHandoffAttachResult](ctx, c, "autohand.browserHandoff.attach", params)
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{

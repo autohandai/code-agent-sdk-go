@@ -309,6 +309,11 @@ func (a *Agent) CreateBrowserHandoff(ctx context.Context, params *BrowserHandoff
 	return a.sdk.CreateBrowserHandoff(ctx, params)
 }
 
+// AttachBrowserHandoff restores the session referenced by a handoff token.
+func (a *Agent) AttachBrowserHandoff(ctx context.Context, params *BrowserHandoffAttachParams) (*BrowserHandoffAttachResult, error) {
+	return a.sdk.AttachBrowserHandoff(ctx, params)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

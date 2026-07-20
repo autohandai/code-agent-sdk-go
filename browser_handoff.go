@@ -1,5 +1,7 @@
 package autohand
 
+import "fmt"
+
 // BrowserHandoffCreateParams configures browser extension routing for a handoff.
 type BrowserHandoffCreateParams struct {
 	ExtensionID *string `json:"extensionId,omitempty"`
@@ -14,4 +16,24 @@ type BrowserHandoffCreateResult struct {
 	CreatedAt     string `json:"createdAt"`
 	ExpiresAt     string `json:"expiresAt"`
 	URL           string `json:"url"`
+}
+
+// BrowserHandoffAttachParams identifies a browser handoff token.
+type BrowserHandoffAttachParams struct {
+	Token string `json:"token"`
+}
+
+func (p *BrowserHandoffAttachParams) validate() error {
+	if p == nil || p.Token == "" {
+		return fmt.Errorf("browser handoff token is required")
+	}
+	return nil
+}
+
+// BrowserHandoffAttachResult describes a restored browser handoff session.
+type BrowserHandoffAttachResult struct {
+	Success       bool    `json:"success"`
+	SessionID     *string `json:"sessionId,omitempty"`
+	WorkspaceRoot *string `json:"workspaceRoot,omitempty"`
+	MessageCount  *int    `json:"messageCount,omitempty"`
 }

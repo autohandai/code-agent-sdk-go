@@ -359,6 +359,14 @@ func (s *SDK) CreateBrowserHandoff(ctx context.Context, params *BrowserHandoffCr
 	return s.client.CreateBrowserHandoff(ctx, params)
 }
 
+// AttachBrowserHandoff restores the session referenced by a handoff token.
+func (s *SDK) AttachBrowserHandoff(ctx context.Context, params *BrowserHandoffAttachParams) (*BrowserHandoffAttachResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.AttachBrowserHandoff(ctx, params)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {

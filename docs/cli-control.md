@@ -13,3 +13,8 @@ returned `ResetResult.SessionID` is assigned by the CLI.
 Call `CreateBrowserHandoff(ctx, params)` to create a continuation token for the
 active session. Optional extension and install routing are preserved, and the
 result contains all token, session, workspace, timestamp, and URL fields.
+
+## Attach A Browser Handoff
+
+Call `AttachBrowserHandoff(ctx, params)` with a token. A successful result may
+include the restored session ID, workspace root, and message count.

@@ -66,3 +66,18 @@ func TestBrowserHandoffCreateExactWireAndResult(t *testing.T) {
 		"installUrl":  "https://example.test/install",
 	})
 }
+
+func TestBrowserHandoffAttachExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := client.AttachBrowserHandoff(ctx, &BrowserHandoffAttachParams{Token: "handoff-token"})
+	if err != nil || !result.Success || result.SessionID == nil || *result.SessionID != "session-1" || result.WorkspaceRoot == nil || *result.WorkspaceRoot != "/workspace" || result.MessageCount == nil || *result.MessageCount != 7 {
+		t.Fatalf("AttachBrowserHandoff() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.browserHandoff.attach", map[string]interface{}{
+		"token": "handoff-token",
+	})
+}
