@@ -184,3 +184,23 @@ func TestAutomodeCancelExactWireAndResult(t *testing.T) {
 		"reason": "operator requested",
 	})
 }
+
+func TestAutomodeLogExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	limit := 5
+
+	result, err := client.GetAutomodeLog(ctx, &AutomodeGetLogParams{Limit: &limit})
+	if err != nil || !result.Success || result.Error != nil || len(result.Iterations) != 1 {
+		t.Fatalf("GetAutomodeLog() = %#v, %v", result, err)
+	}
+	entry := result.Iterations[0]
+	if entry.Iteration != 4 || entry.Timestamp != "2026-07-20T01:03:00Z" || !reflect.DeepEqual(entry.Actions, []string{"edit", "test"}) || entry.TokensUsed == nil || *entry.TokensUsed != 1234 || entry.Cost == nil || *entry.Cost != 0.42 || entry.Checkpoint == nil || entry.Checkpoint.Commit != "def456" {
+		t.Fatalf("iteration = %#v", entry)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.automode.getLog", map[string]interface{}{
+		"limit": float64(5),
+	})
+}

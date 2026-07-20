@@ -142,6 +142,14 @@ func (c *RPCClient) CancelAutomode(ctx context.Context, params *AutomodeCancelPa
 	return rpcRequest[AutomodeCancelResult](ctx, c, "autohand.automode.cancel", params)
 }
 
+// GetAutomodeLog returns auto-mode iteration records.
+func (c *RPCClient) GetAutomodeLog(ctx context.Context, params *AutomodeGetLogParams) (*AutomodeGetLogResult, error) {
+	if params == nil {
+		params = &AutomodeGetLogParams{}
+	}
+	return rpcRequest[AutomodeGetLogResult](ctx, c, "autohand.automode.getLog", params)
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{

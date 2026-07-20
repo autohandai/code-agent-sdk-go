@@ -344,6 +344,11 @@ func (a *Agent) CancelAutomode(ctx context.Context, params *AutomodeCancelParams
 	return a.sdk.CancelAutomode(ctx, params)
 }
 
+// GetAutomodeLog returns auto-mode iteration records.
+func (a *Agent) GetAutomodeLog(ctx context.Context, params *AutomodeGetLogParams) (*AutomodeGetLogResult, error) {
+	return a.sdk.GetAutomodeLog(ctx, params)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

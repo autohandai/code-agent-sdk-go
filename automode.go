@@ -77,3 +77,31 @@ type AutomodeCancelResult struct {
 	Success bool    `json:"success"`
 	Error   *string `json:"error,omitempty"`
 }
+
+// AutomodeGetLogParams optionally limits returned iteration records.
+type AutomodeGetLogParams struct {
+	Limit *int `json:"limit,omitempty"`
+}
+
+// AutomodeLogCheckpoint describes an iteration checkpoint.
+type AutomodeLogCheckpoint struct {
+	Commit  string `json:"commit"`
+	Message string `json:"message"`
+}
+
+// AutomodeLogEntry describes one auto-mode iteration.
+type AutomodeLogEntry struct {
+	Iteration  int                    `json:"iteration"`
+	Timestamp  string                 `json:"timestamp"`
+	Actions    []string               `json:"actions"`
+	TokensUsed *int                   `json:"tokensUsed,omitempty"`
+	Cost       *float64               `json:"cost,omitempty"`
+	Checkpoint *AutomodeLogCheckpoint `json:"checkpoint,omitempty"`
+}
+
+// AutomodeGetLogResult contains auto-mode iteration records.
+type AutomodeGetLogResult struct {
+	Success    bool               `json:"success"`
+	Iterations []AutomodeLogEntry `json:"iterations"`
+	Error      *string            `json:"error,omitempty"`
+}

@@ -47,3 +47,9 @@ reports business success or an optional CLI error.
 
 Call `CancelAutomode(ctx, params)` to stop the active session. `Reason` is
 optional; the typed result reports business success or an optional CLI error.
+
+## Read The Auto-Mode Iteration Log
+
+Call `GetAutomodeLog(ctx, params)` with an optional `Limit`. Each entry contains
+its iteration, timestamp, actions, and optional token, cost, and checkpoint
+details.

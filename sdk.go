@@ -415,6 +415,14 @@ func (s *SDK) CancelAutomode(ctx context.Context, params *AutomodeCancelParams) 
 	return s.client.CancelAutomode(ctx, params)
 }
 
+// GetAutomodeLog returns auto-mode iteration records.
+func (s *SDK) GetAutomodeLog(ctx context.Context, params *AutomodeGetLogParams) (*AutomodeGetLogResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GetAutomodeLog(ctx, params)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {
