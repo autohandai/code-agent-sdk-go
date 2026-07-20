@@ -334,6 +334,39 @@ type LearnUpdateResult struct {
 	Error     string                `json:"error,omitempty"`
 }
 
+// SkillGenerationScope controls where a generated skill is installed.
+type SkillGenerationScope string
+
+const (
+	SkillGenerationProject SkillGenerationScope = "project"
+	SkillGenerationUser    SkillGenerationScope = "user"
+)
+
+// LearnGenerateParams selects the installation scope for a generated skill.
+type LearnGenerateParams struct {
+	Scope SkillGenerationScope `json:"scope"`
+}
+
+func (p *LearnGenerateParams) validate() error {
+	if p == nil {
+		return fmt.Errorf("generate skill: params are required")
+	}
+	switch p.Scope {
+	case SkillGenerationProject, SkillGenerationUser:
+		return nil
+	default:
+		return fmt.Errorf("generate skill: scope must be %q or %q", SkillGenerationProject, SkillGenerationUser)
+	}
+}
+
+// LearnGenerateResult describes a generated skill when generation succeeds.
+type LearnGenerateResult struct {
+	Success   bool   `json:"success"`
+	SkillName string `json:"skillName,omitempty"`
+	SkillPath string `json:"skillPath,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -588,4 +621,22 @@ func (s *SDK) UpdateProjectLearning(ctx context.Context) (*LearnUpdateResult, er
 		return nil, err
 	}
 	return s.client.UpdateProjectLearning(ctx)
+}
+
+// GenerateProjectSkill asks the CLI to synthesize and install a skill from
+// observed project workflows.
+func (c *RPCClient) GenerateProjectSkill(ctx context.Context, params *LearnGenerateParams) (*LearnGenerateResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[LearnGenerateResult](ctx, c, "autohand.learn.generate", params)
+}
+
+// GenerateProjectSkill asks the CLI to synthesize and install a skill from
+// observed project workflows.
+func (s *SDK) GenerateProjectSkill(ctx context.Context, params *LearnGenerateParams) (*LearnGenerateResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.GenerateProjectSkill(ctx, params)
 }

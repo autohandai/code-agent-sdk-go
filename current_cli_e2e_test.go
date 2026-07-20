@@ -291,3 +291,19 @@ func TestUpdateProjectLearningE2E(t *testing.T) {
 	}
 	fixture.assertRequest(t, "autohand.learn.update", `"params":{}`)
 }
+
+func TestGenerateProjectSkillE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"skillName":"release","skillPath":".autohand/skills/release"}`, "")
+	result, err := fixture.sdk.GenerateProjectSkill(fixture.ctx, &LearnGenerateParams{Scope: SkillGenerationProject})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success || result.SkillName != "release" {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.learn.generate", `"scope":"project"`)
+
+	if _, err := fixture.sdk.GenerateProjectSkill(fixture.ctx, &LearnGenerateParams{}); err == nil {
+		t.Fatal("expected invalid scope to fail before transport")
+	}
+}
