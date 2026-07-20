@@ -367,6 +367,14 @@ func (s *SDK) AttachBrowserHandoff(ctx context.Context, params *BrowserHandoffAt
 	return s.client.AttachBrowserHandoff(ctx, params)
 }
 
+// AttachLatestBrowserHandoff restores the newest unexpired browser handoff.
+func (s *SDK) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHandoffAttachResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.AttachLatestBrowserHandoff(ctx)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {

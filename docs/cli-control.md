@@ -18,3 +18,6 @@ result contains all token, session, workspace, timestamp, and URL fields.
 
 Call `AttachBrowserHandoff(ctx, params)` with a token. A successful result may
 include the restored session ID, workspace root, and message count.
+
+Use `AttachLatestBrowserHandoff(ctx)` when the newest unexpired handoff should
+be selected without supplying a token.

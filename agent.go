@@ -314,6 +314,11 @@ func (a *Agent) AttachBrowserHandoff(ctx context.Context, params *BrowserHandoff
 	return a.sdk.AttachBrowserHandoff(ctx, params)
 }
 
+// AttachLatestBrowserHandoff restores the newest unexpired browser handoff.
+func (a *Agent) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHandoffAttachResult, error) {
+	return a.sdk.AttachLatestBrowserHandoff(ctx)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

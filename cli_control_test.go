@@ -81,3 +81,16 @@ func TestBrowserHandoffAttachExactWireAndResult(t *testing.T) {
 		"token": "handoff-token",
 	})
 }
+
+func TestBrowserHandoffAttachLatestExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	result, err := client.AttachLatestBrowserHandoff(ctx)
+	if err != nil || result.Success || result.SessionID != nil || result.WorkspaceRoot != nil || result.MessageCount != nil {
+		t.Fatalf("AttachLatestBrowserHandoff() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.browserHandoff.attachLatest", map[string]interface{}{})
+}

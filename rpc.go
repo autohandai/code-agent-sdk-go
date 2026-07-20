@@ -106,6 +106,11 @@ func (c *RPCClient) AttachBrowserHandoff(ctx context.Context, params *BrowserHan
 	return rpcRequest[BrowserHandoffAttachResult](ctx, c, "autohand.browserHandoff.attach", params)
 }
 
+// AttachLatestBrowserHandoff restores the newest unexpired browser handoff.
+func (c *RPCClient) AttachLatestBrowserHandoff(ctx context.Context) (*BrowserHandoffAttachResult, error) {
+	return rpcRequest[BrowserHandoffAttachResult](ctx, c, "autohand.browserHandoff.attachLatest", map[string]interface{}{})
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{
