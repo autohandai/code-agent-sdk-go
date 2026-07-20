@@ -45,3 +45,24 @@ func TestResetExactWireAndResult(t *testing.T) {
 	}
 	assertControlRequest(t, nextControlRequest(t, requests), "autohand.reset", map[string]interface{}{})
 }
+
+func TestBrowserHandoffCreateExactWireAndResult(t *testing.T) {
+	client, requests, cleanup := newAutoresearchTestClient(t)
+	defer cleanup()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	extensionID := "ext-id"
+	installURL := "https://example.test/install"
+
+	result, err := client.CreateBrowserHandoff(ctx, &BrowserHandoffCreateParams{
+		ExtensionID: &extensionID,
+		InstallURL:  &installURL,
+	})
+	if err != nil || result.Token != "handoff-token" || result.SessionID != "session-1" || result.WorkspaceRoot != "/workspace" || result.CreatedAt != "2026-07-20T01:00:00Z" || result.ExpiresAt != "2026-07-20T01:05:00Z" || result.URL != "chrome-extension://ext/continue" {
+		t.Fatalf("CreateBrowserHandoff() = %#v, %v", result, err)
+	}
+	assertControlRequest(t, nextControlRequest(t, requests), "autohand.browserHandoff.create", map[string]interface{}{
+		"extensionId": "ext-id",
+		"installUrl":  "https://example.test/install",
+	})
+}

@@ -187,6 +187,11 @@ func newAutoresearchTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequ
 			switch request.Method {
 			case "autohand.reset":
 				responseResult = map[string]interface{}{"sessionId": "session-new"}
+			case "autohand.browserHandoff.create":
+				responseResult = map[string]interface{}{
+					"token": "handoff-token", "sessionId": "session-1", "workspaceRoot": "/workspace",
+					"createdAt": "2026-07-20T01:00:00Z", "expiresAt": "2026-07-20T01:05:00Z", "url": "chrome-extension://ext/continue",
+				}
 			case "autohand.autoresearch.start":
 				result["instruction"] = "Run the next experiment"
 			case "autohand.autoresearch.status":

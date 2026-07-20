@@ -304,6 +304,11 @@ func (a *Agent) Reset(ctx context.Context) (*ResetResult, error) {
 	return a.sdk.Reset(ctx)
 }
 
+// CreateBrowserHandoff creates a browser continuation token for the active session.
+func (a *Agent) CreateBrowserHandoff(ctx context.Context, params *BrowserHandoffCreateParams) (*BrowserHandoffCreateResult, error) {
+	return a.sdk.CreateBrowserHandoff(ctx, params)
+}
+
 // AllowPermission approves a permission request.
 func (a *Agent) AllowPermission(ctx context.Context, requestID string, scope DecisionScope) error {
 	return a.sdk.AllowPermission(ctx, requestID, scope)

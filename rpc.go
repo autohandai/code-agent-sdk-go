@@ -90,6 +90,14 @@ func (c *RPCClient) GetMessages(ctx context.Context, limit int) (*GetMessagesRes
 	return &result, nil
 }
 
+// CreateBrowserHandoff creates a browser continuation token for the active session.
+func (c *RPCClient) CreateBrowserHandoff(ctx context.Context, params *BrowserHandoffCreateParams) (*BrowserHandoffCreateResult, error) {
+	if params == nil {
+		params = &BrowserHandoffCreateParams{}
+	}
+	return rpcRequest[BrowserHandoffCreateResult](ctx, c, "autohand.browserHandoff.create", params)
+}
+
 // PermissionResponse responds to a permission request.
 func (c *RPCClient) PermissionResponse(ctx context.Context, requestID string, decision PermissionDecision) error {
 	params := map[string]interface{}{

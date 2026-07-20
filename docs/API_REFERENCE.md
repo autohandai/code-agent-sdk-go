@@ -130,6 +130,7 @@ err = sdk.SetMaxThinkingTokens(ctx, 4096)
 err = sdk.ApplyFlagSettings(ctx, map[string]interface{}{"temperature": 0.2})
 err = sdk.Abort(ctx)
 reset, err := sdk.Reset(ctx)
+handoff, err := sdk.CreateBrowserHandoff(ctx, &autohand.BrowserHandoffCreateParams{})
 ```
 
 `Start` skips the permission-mode RPC for the default interactive mode.

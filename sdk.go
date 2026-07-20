@@ -351,6 +351,14 @@ func (s *SDK) GetMessages(ctx context.Context, limit int) (*GetMessagesResult, e
 	return s.client.GetMessages(ctx, limit)
 }
 
+// CreateBrowserHandoff creates a browser continuation token for the active session.
+func (s *SDK) CreateBrowserHandoff(ctx context.Context, params *BrowserHandoffCreateParams) (*BrowserHandoffCreateResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.CreateBrowserHandoff(ctx, params)
+}
+
 // SupportedModels returns available models.
 func (s *SDK) SupportedModels(ctx context.Context) ([]ModelInfo, error) {
 	if err := s.ensureStarted(ctx); err != nil {
