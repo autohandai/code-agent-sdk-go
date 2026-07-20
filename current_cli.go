@@ -271,6 +271,45 @@ type MCPInvocationResponseResult struct {
 	Success bool `json:"success"`
 }
 
+// LearningAuditStatus classifies overlap between project skills.
+type LearningAuditStatus string
+
+const (
+	LearningAuditRedundant   LearningAuditStatus = "redundant"
+	LearningAuditOutdated    LearningAuditStatus = "outdated"
+	LearningAuditConflicting LearningAuditStatus = "conflicting"
+)
+
+// LearnRecommendParams controls whether recommendation analysis performs a
+// deeper project scan.
+type LearnRecommendParams struct {
+	Deep bool `json:"deep,omitempty"`
+}
+
+// LearningAuditEntry describes one existing skill concern.
+type LearningAuditEntry struct {
+	Skill  string              `json:"skill"`
+	Status LearningAuditStatus `json:"status"`
+	Reason string              `json:"reason"`
+}
+
+// LearningRecommendation is a scored registry recommendation.
+type LearningRecommendation struct {
+	Slug   string  `json:"slug"`
+	Score  float64 `json:"score"`
+	Reason string  `json:"reason"`
+}
+
+// LearnRecommendResult contains the CLI's project learning analysis.
+type LearnRecommendResult struct {
+	Success         bool                     `json:"success"`
+	ProjectSummary  string                   `json:"projectSummary"`
+	Audit           []LearningAuditEntry     `json:"audit"`
+	Recommendations []LearningRecommendation `json:"recommendations"`
+	GapAnalysis     *string                  `json:"gapAnalysis"`
+	Error           string                   `json:"error,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -494,4 +533,22 @@ func (s *SDK) RespondToMCPInvocation(ctx context.Context, params *MCPInvocationR
 		return nil, err
 	}
 	return s.client.RespondToMCPInvocation(ctx, params)
+}
+
+// RecommendProjectLearning audits project skills and returns scored registry
+// recommendations.
+func (c *RPCClient) RecommendProjectLearning(ctx context.Context, params *LearnRecommendParams) (*LearnRecommendResult, error) {
+	if params == nil {
+		params = &LearnRecommendParams{}
+	}
+	return rpcRequest[LearnRecommendResult](ctx, c, "autohand.learn.recommend", params)
+}
+
+// RecommendProjectLearning audits project skills and returns scored registry
+// recommendations.
+func (s *SDK) RecommendProjectLearning(ctx context.Context, params *LearnRecommendParams) (*LearnRecommendResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.RecommendProjectLearning(ctx, params)
 }

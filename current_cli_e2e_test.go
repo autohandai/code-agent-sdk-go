@@ -267,3 +267,15 @@ func TestRespondToMCPInvocationE2E(t *testing.T) {
 		t.Fatal("expected ambiguous failed response to fail before transport")
 	}
 }
+
+func TestRecommendProjectLearningE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"projectSummary":"Go SDK","audit":[{"skill":"old","status":"outdated","reason":"stale"}],"recommendations":[{"slug":"go-testing","score":0.95,"reason":"missing tests"}],"gapAnalysis":"Add integration coverage"}`, "")
+	result, err := fixture.sdk.RecommendProjectLearning(fixture.ctx, &LearnRecommendParams{Deep: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Success || len(result.Audit) != 1 || result.Audit[0].Status != LearningAuditOutdated || result.GapAnalysis == nil {
+		t.Fatalf("result = %+v", result)
+	}
+	fixture.assertRequest(t, "autohand.learn.recommend", `"deep":true`)
+}
