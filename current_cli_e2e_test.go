@@ -207,3 +207,25 @@ func TestAttachSessionE2E(t *testing.T) {
 		t.Fatal("expected blank session ID to fail before transport")
 	}
 }
+
+func TestSetYoloE2E(t *testing.T) {
+	fixture := newCurrentCLIFixture(t, `{"success":true,"expiresIn":45}`, "")
+	params := &YoloSetParams{Pattern: "*", TimeoutSeconds: 45}
+	canonical, err := fixture.sdk.SetYolo(fixture.ctx, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alias, err := fixture.sdk.SetYoloAlias(fixture.ctx, params)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if canonical.ExpiresIn == nil || *canonical.ExpiresIn != 45 || alias.ExpiresIn == nil || *alias.ExpiresIn != 45 {
+		t.Fatalf("canonical = %+v, alias = %+v", canonical, alias)
+	}
+	fixture.assertRequest(t, "autohand.yoloSet", `"pattern":"*"`, `"timeoutSeconds":45`)
+	fixture.assertRequest(t, "autohand.yolo.set")
+
+	if _, err := fixture.sdk.SetYolo(fixture.ctx, &YoloSetParams{TimeoutSeconds: -1}); err == nil {
+		t.Fatal("expected negative timeout to fail before transport")
+	}
+}

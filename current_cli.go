@@ -170,6 +170,29 @@ type SessionAttachResult struct {
 	Error         string `json:"error,omitempty"`
 }
 
+// YoloSetParams configures unrestricted mode. The current CLI treats any
+// non-empty pattern as enabled and an empty pattern as disabled.
+type YoloSetParams struct {
+	Pattern        string `json:"pattern"`
+	TimeoutSeconds int    `json:"timeoutSeconds,omitempty"`
+}
+
+func (p *YoloSetParams) validate() error {
+	if p == nil {
+		return fmt.Errorf("set YOLO mode: params are required")
+	}
+	if p.TimeoutSeconds < 0 {
+		return fmt.Errorf("set YOLO mode: timeout seconds cannot be negative")
+	}
+	return nil
+}
+
+// YoloSetResult reports the effective expiry when unrestricted mode is timed.
+type YoloSetResult struct {
+	Success   bool `json:"success"`
+	ExpiresIn *int `json:"expiresIn,omitempty"`
+}
+
 // AcknowledgePermission confirms that a permission request reached the SDK
 // client. Callers must still answer the request with PermissionResponse.
 func (c *RPCClient) AcknowledgePermission(ctx context.Context, requestID string) (*PermissionAcknowledgedResult, error) {
@@ -326,4 +349,39 @@ func (s *SDK) AttachSession(ctx context.Context, sessionID string) (*SessionAtta
 		return nil, err
 	}
 	return s.client.AttachSession(ctx, sessionID)
+}
+
+func (c *RPCClient) setYolo(ctx context.Context, method string, params *YoloSetParams) (*YoloSetResult, error) {
+	if err := params.validate(); err != nil {
+		return nil, err
+	}
+	return rpcRequest[YoloSetResult](ctx, c, method, params)
+}
+
+// SetYolo sets timed unrestricted mode through the canonical CLI method.
+func (c *RPCClient) SetYolo(ctx context.Context, params *YoloSetParams) (*YoloSetResult, error) {
+	return c.setYolo(ctx, "autohand.yoloSet", params)
+}
+
+// SetYoloAlias sets timed unrestricted mode through the dotted compatibility
+// alias exposed by current CLIs.
+func (c *RPCClient) SetYoloAlias(ctx context.Context, params *YoloSetParams) (*YoloSetResult, error) {
+	return c.setYolo(ctx, "autohand.yolo.set", params)
+}
+
+// SetYolo sets timed unrestricted mode through the canonical CLI method.
+func (s *SDK) SetYolo(ctx context.Context, params *YoloSetParams) (*YoloSetResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.SetYolo(ctx, params)
+}
+
+// SetYoloAlias uses the dotted compatibility alias for timed unrestricted
+// mode.
+func (s *SDK) SetYoloAlias(ctx context.Context, params *YoloSetParams) (*YoloSetResult, error) {
+	if err := s.ensureStarted(ctx); err != nil {
+		return nil, err
+	}
+	return s.client.SetYoloAlias(ctx, params)
 }
