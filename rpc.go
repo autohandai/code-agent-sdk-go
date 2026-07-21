@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"sync"
 )
@@ -602,10 +603,75 @@ func (c *RPCClient) IsConnected() bool {
 	return c.transport.IsRunning()
 }
 
+func (c *RPCClient) queueRawNotification(method string, params json.RawMessage) {
+	typeName := strings.TrimPrefix(method, "autohand.")
+	c.queueEvent(GenericEvent{
+		Type: typeName, Method: method, Params: append(json.RawMessage(nil), params...),
+	})
+}
+
+func hookJSONFieldsAreValid(
+	params json.RawMessage,
+	expectedType string,
+	required []string,
+	optional []string,
+) bool {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(params, &object); err != nil || object == nil {
+		return false
+	}
+	if rawType, ok := object["type"]; ok {
+		var wireType string
+		if err := json.Unmarshal(rawType, &wireType); err != nil || wireType != expectedType {
+			return false
+		}
+	}
+	for _, field := range required {
+		value, ok := object[field]
+		if !ok || string(value) == "null" {
+			return false
+		}
+	}
+	for _, field := range optional {
+		if value, ok := object[field]; ok && string(value) == "null" {
+			return false
+		}
+	}
+	return true
+}
+
+func queueHookNotification[T Event](
+	c *RPCClient,
+	method string,
+	params json.RawMessage,
+	event T,
+	required []string,
+	optional []string,
+	validate func(T) bool,
+) {
+	expectedType := event.eventType()
+	if err := json.Unmarshal(params, &event); err != nil ||
+		!hookJSONFieldsAreValid(params, expectedType, required, optional) ||
+		(validate != nil && !validate(event)) {
+		c.queueRawNotification(method, params)
+		return
+	}
+	c.queueEvent(event)
+}
+
+func finiteNonNegative(value float64) bool {
+	return value >= 0 && !math.IsNaN(value) && !math.IsInf(value, 0)
+}
+
+func validTokenAccountingStatus(status *TokenAccountingStatus) bool {
+	return status == nil ||
+		*status == TokenAccountingActual ||
+		*status == TokenAccountingUnavailable
+}
+
 func (c *RPCClient) setupNotifications() {
 	c.transport.OnUnknownNotification(func(method string, params json.RawMessage) {
-		typeName := strings.TrimPrefix(method, "autohand.")
-		c.queueEvent(GenericEvent{Type: typeName, Method: method, Params: append(json.RawMessage(nil), params...)})
+		c.queueRawNotification(method, params)
 	})
 
 	c.transport.OnNotification("autohand.automode.iteration", func(params json.RawMessage) {
@@ -636,42 +702,153 @@ func (c *RPCClient) setupNotifications() {
 	})
 
 	c.transport.OnNotification("autohand.hook.preTool", func(params json.RawMessage) {
-		var event HookPreToolEvent
-		if err := json.Unmarshal(params, &event); err != nil || event.ToolID == "" || event.ToolName == "" || event.Args == nil || event.Timestamp == "" {
-			return
-		}
-		event.Type = "hook_pre_tool"
-		c.queueEvent(event)
+		queueHookNotification(c, "autohand.hook.preTool", params,
+			HookPreToolEvent{Type: "hook_pre_tool"},
+			[]string{"toolId", "toolName", "args", "timestamp"}, nil,
+			func(event HookPreToolEvent) bool { return event.Args != nil })
 	})
 
 	c.transport.OnNotification("autohand.hook.postTool", func(params json.RawMessage) {
-		var event HookPostToolEvent
-		if err := json.Unmarshal(params, &event); err != nil || event.ToolID == "" || event.ToolName == "" || event.Duration < 0 || event.Timestamp == "" {
-			return
-		}
-		event.Type = "hook_post_tool"
-		c.queueEvent(event)
+		queueHookNotification(c, "autohand.hook.postTool", params,
+			HookPostToolEvent{Type: "hook_post_tool"},
+			[]string{"toolId", "toolName", "success", "duration", "timestamp"},
+			[]string{"output"},
+			func(event HookPostToolEvent) bool { return finiteNonNegative(event.Duration) })
+	})
+
+	c.transport.OnNotification("autohand.hook.fileModified", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.fileModified", params,
+			HookFileModifiedEvent{Type: "file_modified"},
+			[]string{"filePath", "changeType", "toolId", "timestamp"}, nil,
+			func(event HookFileModifiedEvent) bool {
+				return event.ChangeType == HookFileCreated ||
+					event.ChangeType == HookFileModified ||
+					event.ChangeType == HookFileDeleted
+			})
 	})
 
 	c.transport.OnNotification("autohand.hook.prePrompt", func(params json.RawMessage) {
-		var event HookPrePromptEvent
-		if err := json.Unmarshal(params, &event); err != nil || event.Instruction == "" || event.MentionedFiles == nil || event.Timestamp == "" {
-			return
-		}
-		event.Type = "hook_pre_prompt"
-		c.queueEvent(event)
+		queueHookNotification(c, "autohand.hook.prePrompt", params,
+			HookPrePromptEvent{Type: "hook_pre_prompt"},
+			[]string{"instruction", "mentionedFiles", "timestamp"}, nil,
+			func(event HookPrePromptEvent) bool { return event.MentionedFiles != nil })
 	})
 
 	c.transport.OnNotification("autohand.hook.postResponse", func(params json.RawMessage) {
-		var event HookPostResponseEvent
-		if err := json.Unmarshal(params, &event); err != nil || event.TokensUsed < 0 || event.ToolCallsCount < 0 || event.Duration < 0 || event.Timestamp == "" {
-			return
-		}
-		if event.TokensUsageStatus != nil && *event.TokensUsageStatus != TokenAccountingActual && *event.TokensUsageStatus != TokenAccountingUnavailable {
-			return
-		}
-		event.Type = "hook_post_response"
-		c.queueEvent(event)
+		queueHookNotification(c, "autohand.hook.postResponse", params,
+			HookPostResponseEvent{Type: "hook_post_response"},
+			[]string{"tokensUsed", "toolCallsCount", "duration", "timestamp"},
+			[]string{"tokensUsageStatus"},
+			func(event HookPostResponseEvent) bool {
+				return event.TokensUsed >= 0 && event.ToolCallsCount >= 0 &&
+					finiteNonNegative(event.Duration) &&
+					validTokenAccountingStatus(event.TokensUsageStatus)
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.sessionError", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.sessionError", params,
+			HookSessionErrorEvent{Type: "hook_session_error"},
+			[]string{"error", "timestamp"}, []string{"code", "context"}, nil)
+	})
+
+	c.transport.OnNotification("autohand.hook.stop", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.stop", params,
+			HookStopEvent{Type: "hook_stop"},
+			[]string{"tokensUsed", "toolCallsCount", "duration", "timestamp"},
+			[]string{"tokensUsageStatus"},
+			func(event HookStopEvent) bool {
+				return event.TokensUsed >= 0 && event.ToolCallsCount >= 0 &&
+					finiteNonNegative(event.Duration) &&
+					validTokenAccountingStatus(event.TokensUsageStatus)
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.sessionStart", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.sessionStart", params,
+			HookSessionStartEvent{Type: "hook_session_start"},
+			[]string{"sessionType", "timestamp"}, nil,
+			func(event HookSessionStartEvent) bool {
+				return event.SessionType == HookSessionStartup ||
+					event.SessionType == HookSessionResume ||
+					event.SessionType == HookSessionClear
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.sessionEnd", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.sessionEnd", params,
+			HookSessionEndEvent{Type: "hook_session_end"},
+			[]string{"reason", "duration", "timestamp"}, nil,
+			func(event HookSessionEndEvent) bool {
+				validReason := event.Reason == HookSessionQuit ||
+					event.Reason == HookSessionReset ||
+					event.Reason == HookSessionExit ||
+					event.Reason == HookSessionError
+				return validReason && finiteNonNegative(event.Duration)
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.subagentStop", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.subagentStop", params,
+			HookSubagentStopEvent{Type: "hook_subagent_stop"},
+			[]string{"subagentId", "subagentName", "subagentType", "success", "duration", "timestamp"},
+			[]string{"error"},
+			func(event HookSubagentStopEvent) bool { return finiteNonNegative(event.Duration) })
+	})
+
+	c.transport.OnNotification("autohand.hook.permissionRequest", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.permissionRequest", params,
+			HookPermissionRequestEvent{Type: "hook_permission_request"},
+			[]string{"tool", "timestamp"}, []string{"path", "command", "args"}, nil)
+	})
+
+	c.transport.OnNotification("autohand.hook.notification", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.notification", params,
+			HookNotificationEvent{Type: "hook_notification"},
+			[]string{"notificationType", "message", "timestamp"}, nil, nil)
+	})
+
+	c.transport.OnNotification("autohand.hook.contextCompacted", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.contextCompacted", params,
+			HookContextCompactedEvent{Type: "hook_context_compacted"},
+			[]string{"croppedCount", "usagePercent", "reason", "timestamp"},
+			[]string{"summary"},
+			func(event HookContextCompactedEvent) bool {
+				return event.CroppedCount >= 0 &&
+					finiteNonNegative(event.UsagePercent)
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.contextOverflow", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.contextOverflow", params,
+			HookContextOverflowEvent{Type: "hook_context_overflow"},
+			[]string{"tokensBefore", "tokensAfter", "croppedCount", "usagePercent", "timestamp"}, nil,
+			func(event HookContextOverflowEvent) bool {
+				return event.TokensBefore >= 0 &&
+					event.TokensAfter >= 0 &&
+					event.CroppedCount >= 0 &&
+					finiteNonNegative(event.UsagePercent)
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.contextWarning", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.contextWarning", params,
+			HookContextWarningEvent{Type: "hook_context_warning"},
+			[]string{"usagePercent", "remainingTokens", "timestamp"}, nil,
+			func(event HookContextWarningEvent) bool {
+				return finiteNonNegative(event.UsagePercent) &&
+					event.RemainingTokens >= 0
+			})
+	})
+
+	c.transport.OnNotification("autohand.hook.contextCritical", func(params json.RawMessage) {
+		queueHookNotification(c, "autohand.hook.contextCritical", params,
+			HookContextCriticalEvent{Type: "hook_context_critical"},
+			[]string{"usagePercent", "remainingTokens", "timestamp"}, nil,
+			func(event HookContextCriticalEvent) bool {
+				return finiteNonNegative(event.UsagePercent) &&
+					event.RemainingTokens >= 0
+			})
 	})
 
 	c.transport.OnNotification("autohand.mcp.invokeRequest", func(params json.RawMessage) {
@@ -778,13 +955,6 @@ func (c *RPCClient) setupNotifications() {
 		var e ToolEndEvent
 		json.Unmarshal(params, &e)
 		e.Type = "tool_end"
-		c.queueEvent(e)
-	})
-
-	c.transport.OnNotification("autohand.hook.fileModified", func(params json.RawMessage) {
-		var e FileModifiedEvent
-		json.Unmarshal(params, &e)
-		e.Type = "file_modified"
 		c.queueEvent(e)
 	})
 

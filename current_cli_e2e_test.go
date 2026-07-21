@@ -4,8 +4,10 @@ package autohand
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -498,6 +500,148 @@ func TestHookPostResponseEventE2E(t *testing.T) {
 		}
 	case <-fixture.ctx.Done():
 		t.Fatal("timed out waiting for typed post-response hook event")
+	}
+}
+
+func TestAllHookNotificationEventsE2E(t *testing.T) {
+	tests := []struct {
+		name      string
+		method    string
+		wantType  string
+		valid     string
+		malformed string
+	}{
+		{"pre-tool", "autohand.hook.preTool", "HookPreToolEvent", `{"toolId":"tool-1","toolName":"read_file","args":{"path":"README.md"},"timestamp":"now"}`, `{"toolId":"tool-1","toolName":"read_file","args":"README.md","timestamp":"now"}`},
+		{"post-tool", "autohand.hook.postTool", "HookPostToolEvent", `{"toolId":"tool-1","toolName":"read_file","success":true,"duration":12.5,"output":"contents","timestamp":"now"}`, `{"toolId":"tool-1","toolName":"read_file","success":true,"duration":"fast","timestamp":"now"}`},
+		{"file-modified", "autohand.hook.fileModified", "HookFileModifiedEvent", `{"filePath":"sdk.go","changeType":"modify","toolId":"tool-1","timestamp":"now"}`, `{"filePath":"sdk.go","changeType":"rename","toolId":"tool-1","timestamp":"now"}`},
+		{"pre-prompt", "autohand.hook.prePrompt", "HookPrePromptEvent", `{"instruction":"Review","mentionedFiles":["sdk.go"],"timestamp":"now"}`, `{"instruction":"Review","mentionedFiles":[42],"timestamp":"now"}`},
+		{"post-response", "autohand.hook.postResponse", "HookPostResponseEvent", `{"tokensUsed":42,"tokensUsageStatus":"actual","toolCallsCount":2,"duration":125,"timestamp":"now"}`, `{"tokensUsed":42,"tokensUsageStatus":"estimated","toolCallsCount":2,"duration":125,"timestamp":"now"}`},
+		{"session-error", "autohand.hook.sessionError", "HookSessionErrorEvent", `{"error":"provider failed","code":"PROVIDER_ERROR","context":{"retryable":true},"timestamp":"now"}`, `{"error":{"message":"provider failed"},"timestamp":"now"}`},
+		{"stop", "autohand.hook.stop", "HookStopEvent", `{"tokensUsed":42,"tokensUsageStatus":"actual","toolCallsCount":2,"duration":125,"timestamp":"now"}`, `{"tokensUsed":"42","tokensUsageStatus":"actual","toolCallsCount":2,"duration":125,"timestamp":"now"}`},
+		{"session-start", "autohand.hook.sessionStart", "HookSessionStartEvent", `{"sessionType":"resume","timestamp":"now"}`, `{"sessionType":"fork","timestamp":"now"}`},
+		{"session-end", "autohand.hook.sessionEnd", "HookSessionEndEvent", `{"reason":"quit","duration":250,"timestamp":"now"}`, `{"reason":"timeout","duration":250,"timestamp":"now"}`},
+		{"subagent-stop", "autohand.hook.subagentStop", "HookSubagentStopEvent", `{"subagentId":"sub-1","subagentName":"reviewer","subagentType":"worker","success":true,"duration":75,"error":"none","timestamp":"now"}`, `{"subagentId":"sub-1","subagentName":"reviewer","subagentType":"worker","success":"yes","duration":75,"timestamp":"now"}`},
+		{"permission-request", "autohand.hook.permissionRequest", "HookPermissionRequestEvent", `{"tool":"write_file","path":"sdk.go","command":"write","args":{"force":false},"timestamp":"now"}`, `{"tool":"write_file","args":"force","timestamp":"now"}`},
+		{"notification", "autohand.hook.notification", "HookNotificationEvent", `{"notificationType":"info","message":"Finished","timestamp":"now"}`, `{"notificationType":7,"message":"Finished","timestamp":"now"}`},
+		{"context-compacted", "autohand.hook.contextCompacted", "HookContextCompactedEvent", `{"croppedCount":3,"summary":"Earlier turns","usagePercent":0.6125,"reason":"threshold","timestamp":"now"}`, `{"croppedCount":"3","usagePercent":0.6125,"reason":"threshold","timestamp":"now"}`},
+		{"context-overflow", "autohand.hook.contextOverflow", "HookContextOverflowEvent", `{"tokensBefore":12000,"tokensAfter":8000,"croppedCount":4,"usagePercent":1.05,"timestamp":"now"}`, `{"tokensBefore":"12000","tokensAfter":8000,"croppedCount":4,"usagePercent":1.05,"timestamp":"now"}`},
+		{"context-warning", "autohand.hook.contextWarning", "HookContextWarningEvent", `{"usagePercent":0.805,"remainingTokens":4096,"timestamp":"now"}`, `{"usagePercent":-0.1,"remainingTokens":4096,"timestamp":"now"}`},
+		{"context-critical", "autohand.hook.contextCritical", "HookContextCriticalEvent", `{"usagePercent":0.9575,"remainingTokens":1024,"timestamp":"now"}`, `{"usagePercent":0.9575,"remainingTokens":"1024","timestamp":"now"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name+"/valid", func(t *testing.T) {
+			received := receiveHookFixtureEvent(t, test.method, test.valid)
+			if got := reflect.TypeOf(received).Name(); got != test.wantType {
+				t.Fatalf("event type = %s, want %s (%#v)", got, test.wantType, received)
+			}
+			assertEventParamsEqual(t, received, test.valid)
+		})
+
+		t.Run(test.name+"/malformed", func(t *testing.T) {
+			received := receiveHookFixtureEvent(t, test.method, test.malformed)
+			event, ok := received.(GenericEvent)
+			if !ok || event.Method != test.method {
+				t.Fatalf("event = %#v, want GenericEvent for %s", received, test.method)
+			}
+			assertJSONEqual(t, event.Params, []byte(test.malformed))
+		})
+	}
+}
+
+func TestHookNotificationTypeCannotBeOverriddenE2E(t *testing.T) {
+	const method = "autohand.hook.stop"
+	const params = `{"type":"evil","tokensUsed":42,"tokensUsageStatus":"actual","toolCallsCount":2,"duration":125,"timestamp":"now","futureField":{"kept":true}}`
+
+	received := receiveHookFixtureEvent(t, method, params)
+	event, ok := received.(GenericEvent)
+	if !ok {
+		t.Fatalf("event = %#v, want GenericEvent fallback", received)
+	}
+	if event.Method != method {
+		t.Fatalf("event method = %q, want %q", event.Method, method)
+	}
+	assertJSONEqual(t, event.Params, []byte(params))
+}
+
+func TestHookContextCountersRejectFractionsE2E(t *testing.T) {
+	tests := []struct {
+		name   string
+		method string
+		params string
+	}{
+		{"compacted-cropped-count", "autohand.hook.contextCompacted", `{"croppedCount":0.5,"usagePercent":0.6125,"reason":"threshold","timestamp":"now"}`},
+		{"overflow-tokens-before", "autohand.hook.contextOverflow", `{"tokensBefore":12000.5,"tokensAfter":8000,"croppedCount":4,"usagePercent":1.05,"timestamp":"now"}`},
+		{"overflow-tokens-after", "autohand.hook.contextOverflow", `{"tokensBefore":12000,"tokensAfter":8000.5,"croppedCount":4,"usagePercent":1.05,"timestamp":"now"}`},
+		{"overflow-cropped-count", "autohand.hook.contextOverflow", `{"tokensBefore":12000,"tokensAfter":8000,"croppedCount":4.5,"usagePercent":1.05,"timestamp":"now"}`},
+		{"warning-remaining-tokens", "autohand.hook.contextWarning", `{"usagePercent":0.805,"remainingTokens":4096.5,"timestamp":"now"}`},
+		{"critical-remaining-tokens", "autohand.hook.contextCritical", `{"usagePercent":0.9575,"remainingTokens":1024.5,"timestamp":"now"}`},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			received := receiveHookFixtureEvent(t, test.method, test.params)
+			event, ok := received.(GenericEvent)
+			if !ok || event.Method != test.method {
+				t.Fatalf("event = %#v, want GenericEvent for %s", received, test.method)
+			}
+			assertJSONEqual(t, event.Params, []byte(test.params))
+		})
+	}
+}
+
+func receiveHookFixtureEvent(t *testing.T, method, params string) Event {
+	t.Helper()
+	notification := `{"jsonrpc":"2.0","method":"` + method + `","params":` + params + `}`
+	fixture := newCurrentCLIFixture(t, `{"success":true}`, notification)
+	events, err := fixture.sdk.Events(fixture.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := fixture.sdk.Prompt(fixture.ctx, &PromptParams{Message: "emit"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case received := <-events:
+		return received
+	case <-fixture.ctx.Done():
+		t.Fatal("timed out waiting for hook event")
+		return nil
+	}
+}
+
+func assertEventParamsEqual(t *testing.T, event Event, wantJSON string) {
+	t.Helper()
+	encoded, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]interface{}
+	if err := json.Unmarshal(encoded, &got); err != nil {
+		t.Fatal(err)
+	}
+	delete(got, "type")
+	want := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(wantJSON), &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("event params = %#v, want %#v", got, want)
+	}
+}
+
+func assertJSONEqual(t *testing.T, gotJSON, wantJSON []byte) {
+	t.Helper()
+	var got interface{}
+	var want interface{}
+	if err := json.Unmarshal(gotJSON, &got); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(wantJSON, &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("JSON = %#v, want %#v", got, want)
 	}
 }
 

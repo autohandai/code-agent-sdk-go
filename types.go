@@ -683,6 +683,167 @@ type HookPostResponseEvent struct {
 
 func (e HookPostResponseEvent) eventType() string { return "hook_post_response" }
 
+// HookFileChangeType is the kind of file-system change reported by a hook.
+type HookFileChangeType string
+
+const (
+	HookFileCreated  HookFileChangeType = "create"
+	HookFileModified HookFileChangeType = "modify"
+	HookFileDeleted  HookFileChangeType = "delete"
+)
+
+// HookFileModifiedEvent is emitted when a tool changes a file.
+type HookFileModifiedEvent struct {
+	Type       string             `json:"type"`
+	FilePath   string             `json:"filePath"`
+	ChangeType HookFileChangeType `json:"changeType"`
+	ToolID     string             `json:"toolId"`
+	Timestamp  string             `json:"timestamp"`
+}
+
+func (e HookFileModifiedEvent) eventType() string { return "file_modified" }
+
+// HookSessionErrorEvent is emitted when agent execution fails.
+type HookSessionErrorEvent struct {
+	Type      string                 `json:"type"`
+	Error     string                 `json:"error"`
+	Code      *string                `json:"code,omitempty"`
+	Context   map[string]interface{} `json:"context,omitempty"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e HookSessionErrorEvent) eventType() string { return "hook_session_error" }
+
+// HookStopEvent is emitted when an agent turn stops.
+type HookStopEvent struct {
+	Type              string                 `json:"type"`
+	TokensUsed        int                    `json:"tokensUsed"`
+	TokensUsageStatus *TokenAccountingStatus `json:"tokensUsageStatus,omitempty"`
+	ToolCallsCount    int                    `json:"toolCallsCount"`
+	Duration          float64                `json:"duration"`
+	Timestamp         string                 `json:"timestamp"`
+}
+
+func (e HookStopEvent) eventType() string { return "hook_stop" }
+
+// HookSessionStartType identifies how a session started.
+type HookSessionStartType string
+
+const (
+	HookSessionStartup HookSessionStartType = "startup"
+	HookSessionResume  HookSessionStartType = "resume"
+	HookSessionClear   HookSessionStartType = "clear"
+)
+
+// HookSessionStartEvent is emitted when a session begins.
+type HookSessionStartEvent struct {
+	Type        string               `json:"type"`
+	SessionType HookSessionStartType `json:"sessionType"`
+	Timestamp   string               `json:"timestamp"`
+}
+
+func (e HookSessionStartEvent) eventType() string { return "hook_session_start" }
+
+// HookSessionEndReason identifies why a session ended.
+type HookSessionEndReason string
+
+const (
+	HookSessionQuit  HookSessionEndReason = "quit"
+	HookSessionReset HookSessionEndReason = "clear"
+	HookSessionExit  HookSessionEndReason = "exit"
+	HookSessionError HookSessionEndReason = "error"
+)
+
+// HookSessionEndEvent is emitted when a session ends.
+type HookSessionEndEvent struct {
+	Type      string               `json:"type"`
+	Reason    HookSessionEndReason `json:"reason"`
+	Duration  float64              `json:"duration"`
+	Timestamp string               `json:"timestamp"`
+}
+
+func (e HookSessionEndEvent) eventType() string { return "hook_session_end" }
+
+// HookSubagentStopEvent is emitted when a subagent finishes.
+type HookSubagentStopEvent struct {
+	Type         string  `json:"type"`
+	SubagentID   string  `json:"subagentId"`
+	SubagentName string  `json:"subagentName"`
+	SubagentType string  `json:"subagentType"`
+	Success      bool    `json:"success"`
+	Duration     float64 `json:"duration"`
+	Error        *string `json:"error,omitempty"`
+	Timestamp    string  `json:"timestamp"`
+}
+
+func (e HookSubagentStopEvent) eventType() string { return "hook_subagent_stop" }
+
+// HookPermissionRequestEvent is emitted before a permission prompt is shown.
+type HookPermissionRequestEvent struct {
+	Type      string                 `json:"type"`
+	Tool      string                 `json:"tool"`
+	Path      *string                `json:"path,omitempty"`
+	Command   *string                `json:"command,omitempty"`
+	Args      map[string]interface{} `json:"args,omitempty"`
+	Timestamp string                 `json:"timestamp"`
+}
+
+func (e HookPermissionRequestEvent) eventType() string { return "hook_permission_request" }
+
+// HookNotificationEvent is emitted when a user-facing notice is sent.
+type HookNotificationEvent struct {
+	Type             string `json:"type"`
+	NotificationType string `json:"notificationType"`
+	Message          string `json:"message"`
+	Timestamp        string `json:"timestamp"`
+}
+
+func (e HookNotificationEvent) eventType() string { return "hook_notification" }
+
+// HookContextCompactedEvent is emitted after context compaction.
+type HookContextCompactedEvent struct {
+	Type         string  `json:"type"`
+	CroppedCount int     `json:"croppedCount"`
+	Summary      *string `json:"summary,omitempty"`
+	UsagePercent float64 `json:"usagePercent"`
+	Reason       string  `json:"reason"`
+	Timestamp    string  `json:"timestamp"`
+}
+
+func (e HookContextCompactedEvent) eventType() string { return "hook_context_compacted" }
+
+// HookContextOverflowEvent is emitted when context overflow is resolved.
+type HookContextOverflowEvent struct {
+	Type         string  `json:"type"`
+	TokensBefore int     `json:"tokensBefore"`
+	TokensAfter  int     `json:"tokensAfter"`
+	CroppedCount int     `json:"croppedCount"`
+	UsagePercent float64 `json:"usagePercent"`
+	Timestamp    string  `json:"timestamp"`
+}
+
+func (e HookContextOverflowEvent) eventType() string { return "hook_context_overflow" }
+
+// HookContextWarningEvent is emitted at the context warning threshold.
+type HookContextWarningEvent struct {
+	Type            string  `json:"type"`
+	UsagePercent    float64 `json:"usagePercent"`
+	RemainingTokens int     `json:"remainingTokens"`
+	Timestamp       string  `json:"timestamp"`
+}
+
+func (e HookContextWarningEvent) eventType() string { return "hook_context_warning" }
+
+// HookContextCriticalEvent is emitted at the context critical threshold.
+type HookContextCriticalEvent struct {
+	Type            string  `json:"type"`
+	UsagePercent    float64 `json:"usagePercent"`
+	RemainingTokens int     `json:"remainingTokens"`
+	Timestamp       string  `json:"timestamp"`
+}
+
+func (e HookContextCriticalEvent) eventType() string { return "hook_context_critical" }
+
 // MCPInvocationRequestEvent asks the SDK client to execute a VS Code MCP tool
 // and answer with RespondToMCPInvocation.
 type MCPInvocationRequestEvent struct {
@@ -835,16 +996,8 @@ type ToolEndEvent struct {
 
 func (e ToolEndEvent) eventType() string { return "tool_end" }
 
-// FileModifiedEvent is emitted when a file is modified.
-type FileModifiedEvent struct {
-	Type       string `json:"type"`
-	FilePath   string `json:"filePath"`
-	ChangeType string `json:"changeType"`
-	ToolID     string `json:"toolId"`
-	Timestamp  string `json:"timestamp"`
-}
-
-func (e FileModifiedEvent) eventType() string { return "file_modified" }
+// FileModifiedEvent is retained as a compatibility alias.
+type FileModifiedEvent = HookFileModifiedEvent
 
 // PermissionRequestEvent is emitted when the agent requests permission.
 type PermissionRequestEvent struct {
