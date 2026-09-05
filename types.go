@@ -443,40 +443,41 @@ type HookFilter struct {
 
 // PromptParams holds prompt request parameters.
 type PromptParams struct {
-	Message       string
-	Context       *PromptContext
-	Images        []ImageAttachment
-	ThinkingLevel string
-	AgentsMd      interface{}
+	Message       string            `json:"message"`
+	Context       *PromptContext    `json:"context,omitempty"`
+	Images        []ImageAttachment `json:"images,omitempty"`
+	ThinkingLevel string            `json:"thinkingLevel,omitempty"`
+	AgentsMd      interface{}       `json:"agentsMd,omitempty"`
+	StopWhen      []StopCondition   `json:"-"`
 }
 
 // PromptContext holds context for a prompt.
 type PromptContext struct {
-	Files     []string
-	Selection *Selection
-	AgentsMd  *AgentsMdContext
+	Files     []string         `json:"files,omitempty"`
+	Selection *Selection       `json:"selection,omitempty"`
+	AgentsMd  *AgentsMdContext `json:"agentsMd,omitempty"`
 }
 
 // Selection represents a text selection.
 type Selection struct {
-	File      string
-	StartLine int
-	EndLine   int
-	Text      string
+	File      string `json:"file"`
+	StartLine int    `json:"startLine"`
+	EndLine   int    `json:"endLine"`
+	Text      string `json:"text"`
 }
 
 // AgentsMdContext holds AGENTS.md context for a prompt.
 type AgentsMdContext struct {
-	Content string
-	Path    string
-	Auto    bool
+	Content string `json:"content"`
+	Path    string `json:"path,omitempty"`
+	Auto    bool   `json:"auto,omitempty"`
 }
 
 // ImageAttachment represents an image attachment.
 type ImageAttachment struct {
-	Data     string
-	MimeType string
-	Filename string
+	Data     string `json:"data"`
+	MimeType string `json:"mimeType"`
+	Filename string `json:"filename,omitempty"`
 }
 
 // GetStateResult holds agent state.
@@ -577,6 +578,7 @@ type RunResult struct {
 	Status string
 	Text   string
 	Events []Event
+	Steps  []AgentStep
 }
 
 // Event is the union of all SDK events.
@@ -919,6 +921,7 @@ func (e TurnStartEvent) eventType() string { return "turn_start" }
 
 // TurnEndEvent is emitted when a turn ends.
 type TurnEndEvent struct {
+	Reason            string  `json:"reason,omitempty"`
 	Type              string  `json:"type"`
 	TurnID            string  `json:"turnId"`
 	Timestamp         string  `json:"timestamp"`
@@ -1021,6 +1024,7 @@ type PermissionContext struct {
 
 // ErrorEvent is emitted on errors.
 type ErrorEvent struct {
+	Err         error  `json:"-"`
 	Type        string `json:"type"`
 	Code        int    `json:"code"`
 	Message     string `json:"message"`

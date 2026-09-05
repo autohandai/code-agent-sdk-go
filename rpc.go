@@ -3,11 +3,16 @@ package autohand
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"strings"
 	"sync"
 )
+
+// ErrEventOverflow means a consumer could not keep up with the bounded event
+// stream. The subscription closes instead of silently losing control messages.
+var ErrEventOverflow = errors.New("SDK event buffer exceeded; consume events continuously")
 
 // RPCClient is the JSON-RPC client for CLI communication.
 type RPCClient struct {
@@ -579,11 +584,22 @@ func (c *RPCClient) queueEvent(event Event) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	for _, subscriber := range c.subscribers {
+	for id, subscriber := range c.subscribers {
 		select {
 		case subscriber.events <- event:
 		default:
-			// A slow subscriber must not block the JSON-RPC reader or other subscribers.
+		drain:
+			for {
+				select {
+				case <-subscriber.events:
+				default:
+					break drain
+				}
+			}
+			subscriber.events <- ErrorEvent{Type: "error", Code: -1, Message: ErrEventOverflow.Error(), Err: ErrEventOverflow}
+			delete(c.subscribers, id)
+			close(subscriber.events)
+			close(subscriber.done)
 		}
 	}
 }
@@ -670,6 +686,15 @@ func validTokenAccountingStatus(status *TokenAccountingStatus) bool {
 }
 
 func (c *RPCClient) setupNotifications() {
+	c.transport.onClose = c.closeSubscribers
+	c.transport.OnNotification("autohand.stepEnd", func(params json.RawMessage) {
+		event, err := parseStepEnd(params)
+		if err != nil {
+			c.queueEvent(GenericEvent{Type: "unknown_notification", Method: "autohand.stepEnd", Params: params})
+			return
+		}
+		c.queueEvent(event)
+	})
 	c.transport.OnUnknownNotification(func(method string, params json.RawMessage) {
 		c.queueRawNotification(method, params)
 	})

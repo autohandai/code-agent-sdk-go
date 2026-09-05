@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -15,6 +16,21 @@ func TestRequestBeforeStartReturnsLifecycleError(t *testing.T) {
 	_, err := transport.Request(context.Background(), "autohand.getState", map[string]interface{}{})
 	if !errors.Is(err, ErrTransportNotStarted) {
 		t.Fatalf("Request error = %v, want ErrTransportNotStarted", err)
+	}
+}
+
+func TestStartupRPCErrorReachesPendingRequest(t *testing.T) {
+	transport := NewTransport(&Config{})
+	response := make(chan transportResponse, 1)
+	transport.callbacks[1] = response
+	transport.handleLine(`{"jsonrpc":"2.0","id":null,"error":{"code":-32011,"message":"Authentication required"}}`)
+	select {
+	case reply := <-response:
+		if reply.err == nil || !strings.Contains(reply.err.Error(), "Authentication required") {
+			t.Fatalf("startup error: %v", reply.err)
+		}
+	default:
+		t.Fatal("startup RPC error was discarded")
 	}
 }
 

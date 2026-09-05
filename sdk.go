@@ -11,10 +11,11 @@ import (
 
 // SDK is the main Autohand SDK for interacting with the CLI.
 type SDK struct {
-	cfg     *Config
-	client  *RPCClient
-	started bool
-	mu      sync.Mutex
+	cfg        *Config
+	client     *RPCClient
+	started    bool
+	mu         sync.Mutex
+	promptGate chan struct{}
 }
 
 // NewSDK creates a new SDK instance.
@@ -37,8 +38,9 @@ func NewSDK(cfg *Config) *SDK {
 		}
 	}
 	return &SDK{
-		cfg:    cfg,
-		client: NewRPCClient(cfg),
+		cfg:        cfg,
+		client:     NewRPCClient(cfg),
+		promptGate: make(chan struct{}, 1),
 	}
 }
 
@@ -197,67 +199,70 @@ func (s *SDK) Close() error {
 
 // Prompt sends a prompt to the agent (non-streaming).
 func (s *SDK) Prompt(ctx context.Context, params *PromptParams) error {
+	if params == nil {
+		return fmt.Errorf("prompt parameters are required")
+	}
+	if len(params.StopWhen) > 0 {
+		events, err := s.StreamPrompt(ctx, params)
+		if err != nil {
+			return err
+		}
+		for event := range events {
+			if failure, ok := event.(ErrorEvent); ok && !failure.Recoverable {
+				err = failure.Err
+				if err == nil {
+					err = fmt.Errorf("CLI error %d: %s", failure.Code, failure.Message)
+				}
+			}
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return err
+	}
+	select {
+	case s.promptGate <- struct{}{}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	defer func() { <-s.promptGate }()
 	if err := s.ensureStarted(ctx); err != nil {
 		return err
 	}
 	return s.client.Prompt(ctx, params)
 }
 
-// StreamPrompt streams a prompt with real-time events.
-// It races between the prompt request completion and incoming events so that
-// events are yielded as soon as they arrive, even before the prompt call
-// returns.
+// StreamPrompt streams one turn. Calls on the same SDK are serialized until the
+// CLI acknowledges completion, including host stop decisions and cancellation.
 func (s *SDK) StreamPrompt(ctx context.Context, params *PromptParams) (<-chan Event, error) {
+	if params == nil {
+		return nil, fmt.Errorf("prompt parameters are required")
+	}
+	for _, condition := range params.StopWhen {
+		if condition == nil {
+			return nil, fmt.Errorf("stop condition must not be nil")
+		}
+	}
+	select {
+	case s.promptGate <- struct{}{}:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	if err := s.ensureStarted(ctx); err != nil {
+		<-s.promptGate
 		return nil, err
 	}
-
-	streamCtx, cancelStream := context.WithCancel(ctx)
-	events := s.client.Events(streamCtx)
 	out := make(chan Event, 256)
-
 	go func() {
 		defer close(out)
-		defer cancelStream()
-
-		promptDone := make(chan error, 1)
-		go func() {
-			promptDone <- s.client.Prompt(streamCtx, params)
-		}()
-		promptSettled := false
-
-		for {
+		defer func() { <-s.promptGate }()
+		if err := s.streamTurn(ctx, params, out); err != nil {
 			select {
-			case event, ok := <-events:
-				if !ok {
-					return
-				}
-				select {
-				case out <- event:
-				case <-streamCtx.Done():
-					return
-				}
-				if e, ok := event.(AgentEndEvent); ok && e.Type == "agent_end" {
-					return
-				}
-			case err := <-promptDone:
-				if promptSettled {
-					continue
-				}
-				promptSettled = true
-				if err != nil {
-					select {
-					case out <- ErrorEvent{Type: "error", Code: -1, Message: err.Error()}:
-					case <-streamCtx.Done():
-					}
-					return
-				}
-			case <-streamCtx.Done():
-				return
+			case out <- ErrorEvent{Type: "error", Code: -1, Message: err.Error(), Err: err}:
+			case <-ctx.Done():
 			}
 		}
 	}()
-
 	return out, nil
 }
 

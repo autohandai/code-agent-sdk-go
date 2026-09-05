@@ -22,9 +22,10 @@ type Run struct {
 	aborted   bool
 	runErr    error
 	text      string
-	started   bool
 	startOnce sync.Once
-	resultCh  chan RunResult
+	cancel    context.CancelFunc
+	done      chan struct{}
+	result    RunResult
 }
 
 func newRun(sdk *SDK, params *PromptParams, id string) *Run {
@@ -32,18 +33,16 @@ func newRun(sdk *SDK, params *PromptParams, id string) *Run {
 		id = fmt.Sprintf("run_%d", time.Now().UnixNano())
 	}
 	return &Run{
-		id:       id,
-		sdk:      sdk,
-		params:   params,
-		resultCh: make(chan RunResult, 1),
+		id:     id,
+		sdk:    sdk,
+		params: params,
+		done:   make(chan struct{}),
 	}
 }
 
 // Stream returns a channel of events for this run.
 func (r *Run) Stream(ctx context.Context) (<-chan Event, error) {
-	r.startOnce.Do(func() {
-		go r.pump(ctx)
-	})
+	r.start(ctx)
 
 	out := make(chan Event, 256)
 	go func() {
@@ -87,13 +86,16 @@ func (r *Run) Stream(ctx context.Context) (<-chan Event, error) {
 
 // Wait waits for the run to complete and returns the result.
 func (r *Run) Wait(ctx context.Context) (*RunResult, error) {
-	r.startOnce.Do(func() {
-		go r.pump(ctx)
-	})
+	r.start(ctx)
 
 	select {
-	case result := <-r.resultCh:
-		return &result, nil
+	case <-r.done:
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		result := r.result
+		result.Events = append([]Event(nil), r.result.Events...)
+		result.Steps = append([]AgentStep(nil), r.result.Steps...)
+		return &result, r.runErr
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
@@ -103,48 +105,73 @@ func (r *Run) Wait(ctx context.Context) (*RunResult, error) {
 func (r *Run) Abort(ctx context.Context) error {
 	r.mu.Lock()
 	r.aborted = true
+	if r.cancel != nil {
+		r.cancel()
+	}
 	r.mu.Unlock()
-	return r.sdk.Interrupt(ctx)
+	return ctx.Err()
+}
+
+func (r *Run) start(ctx context.Context) {
+	r.startOnce.Do(func() {
+		runCtx, cancel := context.WithCancel(ctx)
+		r.mu.Lock()
+		r.cancel = cancel
+		if r.aborted {
+			cancel()
+		}
+		r.mu.Unlock()
+		go func() { defer cancel(); r.pump(runCtx) }()
+	})
 }
 
 func (r *Run) pump(ctx context.Context) {
-	events, err := r.sdk.StreamPrompt(ctx, r.params)
-	if err != nil {
-		r.mu.Lock()
-		r.runErr = err
-		r.completed = true
-		r.mu.Unlock()
-		r.notify()
-		r.resultCh <- RunResult{
-			ID:     r.id,
-			Status: "error",
-			Events: r.copyEvents(),
-		}
-		return
-	}
-
-	for event := range events {
-		r.record(event)
-		if e, ok := event.(AgentEndEvent); ok && e.Type == "agent_end" {
-			break
-		}
-	}
-
-	r.mu.Lock()
-	r.completed = true
 	status := "completed"
+	var steps []AgentStep
+	events, err := r.sdk.StreamPrompt(ctx, r.params)
+	if err == nil {
+		for event := range events {
+			r.record(event)
+			switch e := event.(type) {
+			case StepEndEvent:
+				steps = append(steps, e.Step)
+			case TurnEndEvent:
+				switch e.Reason {
+				case "stop_condition":
+					status = "stopped"
+				case "aborted":
+					status = "aborted"
+				}
+			case AgentEndEvent:
+				if e.Reason != "" {
+					status = e.Reason
+				}
+			case ErrorEvent:
+				if !e.Recoverable {
+					err = e.Err
+					if err == nil {
+						err = fmt.Errorf("CLI error %d: %s", e.Code, e.Message)
+					}
+				}
+			}
+		}
+	}
+	if ctx.Err() != nil {
+		err = ctx.Err()
+		status = "aborted"
+	} else if err != nil {
+		status = "error"
+	}
+	r.mu.Lock()
 	if r.aborted {
 		status = "aborted"
 	}
+	r.runErr = err
+	r.completed = true
+	r.result = RunResult{ID: r.id, Status: status, Text: r.text, Events: append([]Event(nil), r.events...), Steps: steps}
+	r.notifyLocked()
+	close(r.done)
 	r.mu.Unlock()
-	r.notify()
-
-	r.resultCh <- RunResult{
-		ID:     r.id,
-		Status: status,
-		Text:   r.text,
-		Events: r.copyEvents(),
-	}
 }
 
 func (r *Run) record(event Event) {
@@ -163,26 +190,12 @@ func (r *Run) record(event Event) {
 	r.notifyLocked()
 }
 
-func (r *Run) notify() {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.notifyLocked()
-}
-
 func (r *Run) notifyLocked() {
 	waiters := r.waiters
 	r.waiters = nil
 	for _, w := range waiters {
 		close(w)
 	}
-}
-
-func (r *Run) copyEvents() []Event {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	events := make([]Event, len(r.events))
-	copy(events, r.events)
-	return events
 }
 
 // Agent is a high-level agent session.
@@ -192,6 +205,9 @@ type Agent struct {
 
 // NewAgent creates and starts an agent session.
 func NewAgent(ctx context.Context, cfg *Config) (*Agent, error) {
+	if cfg == nil {
+		cfg = &Config{}
+	}
 	sdkCfg := *cfg
 	if cfg.Instructions != "" {
 		if sdkCfg.AppendSysPrompt != "" {
@@ -637,6 +653,9 @@ func toPromptParams(input interface{}, opts *PromptParams) *PromptParams {
 func mergePromptOptions(params, opts *PromptParams) {
 	if opts == nil {
 		return
+	}
+	if opts.StopWhen != nil {
+		params.StopWhen = append([]StopCondition(nil), opts.StopWhen...)
 	}
 	if opts.Context != nil {
 		params.Context = opts.Context

@@ -19,6 +19,7 @@ The SDK:
 - Communicates via JSON-RPC 2.0 over stdin/stdout
 - Provides an idiomatic Go API
 - Supports streaming events
+- Supports [resumable step control](docs/step-control.md) with `IsStepCount`, `HasToolCall`, and custom stop conditions
 - Discovers and installs community skills, and inspects MCP servers, tools, and configurations
 
 ## Other Programming Languages (Beta)

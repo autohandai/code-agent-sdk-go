@@ -35,6 +35,7 @@ type Transport struct {
 	callbacks     map[int]chan transportResponse
 	notify        map[string]func(json.RawMessage)
 	unknownNotify func(string, json.RawMessage)
+	onClose       func()
 	nextID        int
 	debug         bool
 	timeout       time.Duration
@@ -285,6 +286,9 @@ func (t *Transport) Stop() error {
 
 // Request sends a JSON-RPC request and waits for the response.
 func (t *Transport) Request(ctx context.Context, method string, params interface{}) (json.RawMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	t.mu.Lock()
 	if t.stdin == nil || (t.cmd != nil && (t.cmd.Process == nil || t.cmd.ProcessState != nil)) {
 		t.mu.Unlock()
@@ -387,10 +391,14 @@ func (t *Transport) failCallbacks(reader *LineReader, cause error) {
 	}
 	callbacks := t.callbacks
 	t.callbacks = make(map[int]chan transportResponse)
+	onClose := t.onClose
 	t.mu.Unlock()
 
 	for _, callback := range callbacks {
 		callback <- transportResponse{err: cause}
+	}
+	if onClose != nil {
+		onClose()
 	}
 }
 
@@ -398,6 +406,16 @@ func (t *Transport) handleLine(line string) {
 	var resp jsonRPCResponse
 	if err := json.Unmarshal([]byte(line), &resp); err != nil {
 		t.log("Error parsing line: %s", line)
+		return
+	}
+	if resp.ID == 0 && resp.Error != nil {
+		t.mu.Lock()
+		callbacks := t.callbacks
+		t.callbacks = make(map[int]chan transportResponse)
+		t.mu.Unlock()
+		for _, callback := range callbacks {
+			callback <- transportResponse{err: resp.Error}
+		}
 		return
 	}
 

@@ -14,6 +14,7 @@ Go application -> autohand package -> CLI subprocess -> AI provider
 - [API Reference](./API_REFERENCE.md)
 - [Configuration](./configuration.md)
 - [Event Streaming](./event-streaming.md)
+- [Resumable Step Control](./step-control.md)
 - [Error Handling](./error-handling.md)
 - [Advanced Patterns](./advanced-patterns.md)
 - [Permissions](./permissions.md)
