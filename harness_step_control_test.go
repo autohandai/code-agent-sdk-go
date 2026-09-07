@@ -68,9 +68,10 @@ func TestCurrentHarnessStopWhenWithAutohandAI(t *testing.T) {
 	config := filepath.Join(workspace, "config.json")
 	settings, err := json.Marshal(map[string]interface{}{
 		"auth":     map[string]string{"token": "sdk-fixture-key"},
-		"provider": "autohandai", "autohandai": map[string]interface{}{"model": "fantail", "plan": "cloud", "authMode": "api-key", "contextWindow": 200000},
-		"features":  map[string]bool{"autohand_inference": true, "automaticSpecialists": false},
-		"telemetry": map[string]bool{"enabled": false},
+		"provider": "openrouter", "openrouter": map[string]string{"baseUrl": server.URL + "/unused", "apiKey": "saved-provider-key"},
+		"autohandai": map[string]interface{}{"model": "fantail", "plan": "cloud", "authMode": "api-key", "contextWindow": 200000},
+		"features":   map[string]bool{"autohand_inference": true, "automaticSpecialists": false},
+		"telemetry":  map[string]bool{"enabled": false},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -109,5 +110,20 @@ func TestCurrentHarnessStopWhenWithAutohandAI(t *testing.T) {
 	}
 	if result.Status != "completed" || !resumedEvidence.Load() {
 		t.Fatalf("continuation: %+v; persisted evidence=%v", result, resumedEvidence.Load())
+	}
+	savedBytes, err := os.ReadFile(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var saved struct {
+		Provider   string
+		AutohandAI map[string]interface{}
+		OpenRouter map[string]string
+	}
+	if err := json.Unmarshal(savedBytes, &saved); err != nil {
+		t.Fatal(err)
+	}
+	if saved.Provider != "openrouter" || saved.OpenRouter["apiKey"] != "saved-provider-key" || saved.AutohandAI["apiKey"] != nil || saved.AutohandAI["baseUrl"] != nil {
+		t.Fatal("process provider settings leaked into the saved configuration")
 	}
 }

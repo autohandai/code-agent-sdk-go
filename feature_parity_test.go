@@ -87,7 +87,7 @@ func TestBuildCLIArgsCurrentRuntimeContract(t *testing.T) {
 func TestAutohandAIEnvironmentAndTurnUsage(t *testing.T) {
 	env := buildCLIEnv(&Config{Provider: ProviderAutohandAI, APIKey: "key", BaseURL: "https://api", Env: map[string]string{"AUTOHAND_AI_PLAN": "max"}}, nil)
 	joined := strings.Join(env, "\n")
-	for _, value := range []string{"AUTOHAND_AI_PLAN=cloud", "AUTOHAND_AI_API_KEY=key", "AUTOHAND_AI_BASE_URL=https://api", "AUTOHAND_AI_PLAN=max"} {
+	for _, value := range []string{"AUTOHAND_PROVIDER=autohandai", "AUTOHAND_AI_PLAN=cloud", "AUTOHAND_AI_API_KEY=key", "AUTOHAND_AI_BASE_URL=https://api", "AUTOHAND_AI_PLAN=max"} {
 		if !strings.Contains(joined, value) {
 			t.Errorf("missing %s", value)
 		}

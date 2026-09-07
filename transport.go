@@ -234,6 +234,9 @@ func buildCLIEnv(cfg *Config, base []string) []string {
 			env = append(env, k+"="+v)
 		}
 	}
+	if cfg.Provider != "" {
+		env = append(env, "AUTOHAND_PROVIDER="+string(cfg.Provider))
+	}
 	return env
 }
 
