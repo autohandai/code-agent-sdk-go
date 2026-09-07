@@ -197,39 +197,24 @@ func (s *SDK) Close() error {
 	return s.Stop()
 }
 
-// Prompt sends a prompt to the agent (non-streaming).
+// Prompt sends a prompt and waits for the turn to finish.
 func (s *SDK) Prompt(ctx context.Context, params *PromptParams) error {
-	if params == nil {
-		return fmt.Errorf("prompt parameters are required")
+	events, err := s.StreamPrompt(ctx, params)
+	if err != nil {
+		return err
 	}
-	if len(params.StopWhen) > 0 {
-		events, err := s.StreamPrompt(ctx, params)
-		if err != nil {
-			return err
-		}
-		for event := range events {
-			if failure, ok := event.(ErrorEvent); ok && !failure.Recoverable {
-				err = failure.Err
-				if err == nil {
-					err = fmt.Errorf("CLI error %d: %s", failure.Code, failure.Message)
-				}
+	for event := range events {
+		if failure, ok := event.(ErrorEvent); ok && !failure.Recoverable {
+			err = failure.Err
+			if err == nil {
+				err = fmt.Errorf("CLI error %d: %s", failure.Code, failure.Message)
 			}
 		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		return err
 	}
-	select {
-	case s.promptGate <- struct{}{}:
-	case <-ctx.Done():
+	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	defer func() { <-s.promptGate }()
-	if err := s.ensureStarted(ctx); err != nil {
-		return err
-	}
-	return s.client.Prompt(ctx, params)
+	return err
 }
 
 // StreamPrompt streams one turn. Calls on the same SDK are serialized until the
@@ -731,6 +716,9 @@ func (s *SDK) SupportedAgents(ctx context.Context) ([]AgentInfo, error) {
 	}
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, fmt.Errorf("unmarshal agents: %w", err)
+	}
+	if result.Agents == nil {
+		return nil, fmt.Errorf("agent discovery result requires an agents array")
 	}
 	return result.Agents, nil
 }

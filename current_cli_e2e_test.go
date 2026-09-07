@@ -31,11 +31,12 @@ while IFS= read -r line; do
   case "$line" in
     *autohand.getState*) response='{}' ;;
     *autohand.prompt*)
+      printf '{"jsonrpc":"2.0","id":%s,"result":{"success":true}}\n' "$id"
       if [ -n "$AUTOHAND_TEST_NOTIFICATION" ]; then
         printf '%s\n' "$AUTOHAND_TEST_NOTIFICATION"
       fi
-      response='{"success":true}'
-      ;;
+      printf '%s\n' '{"jsonrpc":"2.0","method":"autohand.turnEnd","params":{"turnId":"one","reason":"completed","timestamp":"now"}}'
+      continue ;;
     *) response="$AUTOHAND_TEST_RESULT" ;;
   esac
   printf '{"jsonrpc":"2.0","id":%s,"result":%s}\n' "$id" "$response"
@@ -95,6 +96,23 @@ func TestAcknowledgePermissionE2E(t *testing.T) {
 
 	if _, err := fixture.sdk.AcknowledgePermission(fixture.ctx, "  "); err == nil {
 		t.Fatal("expected blank request ID to fail before transport")
+	}
+}
+
+func TestSupportedAgentsRejectMalformedResults(t *testing.T) {
+	for _, result := range []string{
+		`{}`, `{"agents":null}`, `{"agents":[{}]}`,
+		`{"agents":[{"id":"one","name":"one","tools":[]}]}`,
+		`{"agents":[{"id":"one","name":"one","description":"Agent","tools":[1]}]}`,
+		`{"agents":[{"id":"one","name":"one","description":"Agent","tools":[null]}]}`,
+		`{"agents":[{"id":"one","name":"one","description":"Agent","tools":[],"extensionScope":"invalid"}]}`,
+	} {
+		t.Run(result, func(t *testing.T) {
+			fixture := newCurrentCLIFixture(t, result, "")
+			if _, err := fixture.sdk.SupportedAgents(fixture.ctx); err == nil {
+				t.Fatalf("accepted malformed agent result: %s", result)
+			}
+		})
 	}
 }
 

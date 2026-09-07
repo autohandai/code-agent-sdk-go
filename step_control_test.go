@@ -32,6 +32,65 @@ func TestPromptWireContract(t *testing.T) {
 	}
 }
 
+func TestPlainPromptWaitsAfterAcknowledgement(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("POSIX subprocess fixture")
+	}
+	directory := t.TempDir()
+	cli := filepath.Join(directory, "autohand")
+	ready, release := filepath.Join(directory, "ready"), filepath.Join(directory, "release")
+	script := `#!/bin/sh
+pending=''
+trap 'test -z "$pending" || kill "$pending" 2>/dev/null; exit 0' EXIT TERM INT
+while IFS= read -r line; do
+  id=$(printf '%s\n' "$line" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p')
+  printf '{"jsonrpc":"2.0","id":%s,"result":{"success":true}}\n' "$id"
+  case "$line" in
+    *autohand.prompt*)
+      touch "$AUTOHAND_TEST_READY"
+      (while [ ! -f "$AUTOHAND_TEST_RELEASE" ]; do sleep 0.01; done
+       printf '%s\n' '{"jsonrpc":"2.0","method":"autohand.turnEnd","params":{"turnId":"one","reason":"completed","timestamp":"now"}}') &
+      pending=$! ;;
+  esac
+done
+`
+	if err := os.WriteFile(cli, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	sdk := NewSDK(&Config{CLIPath: cli, Timeout: 2000, Env: map[string]string{"AUTOHAND_TEST_READY": ready, "AUTOHAND_TEST_RELEASE": release}})
+	defer sdk.Stop()
+	completed := make(chan error, 1)
+	go func() { completed <- sdk.Prompt(ctx, &PromptParams{Message: "work"}) }()
+	for {
+		if _, err := os.Stat(ready); err == nil {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			t.Fatal("prompt was not acknowledged")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	select {
+	case err := <-completed:
+		t.Fatalf("Prompt returned before turnEnd: %v", err)
+	case <-time.After(25 * time.Millisecond):
+	}
+	if err := os.WriteFile(release, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-completed:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-ctx.Done():
+		t.Fatal("Prompt did not settle after turnEnd")
+	}
+}
+
 func newStepControlAgent(t *testing.T) (*Agent, context.Context, string) {
 	t.Helper()
 	if runtime.GOOS == "windows" {
