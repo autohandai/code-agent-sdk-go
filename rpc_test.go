@@ -39,6 +39,8 @@ func newRPCTestClient(t *testing.T) (*RPCClient, <-chan capturedRPCRequest, func
 			result := map[string]interface{}{"success": true}
 			var responseResult interface{} = result
 			switch request.Method {
+			case "autohand.browserCapabilities.set":
+				responseResult = map[string]interface{}{"enabled": true, "protocolVersion": 2, "tools": []string{"browser_navigate"}}
 			case "autohand.reset":
 				responseResult = map[string]interface{}{"sessionId": "session-new"}
 			case "autohand.browserHandoff.create":

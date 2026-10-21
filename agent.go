@@ -9,6 +9,12 @@ import (
 	"time"
 )
 
+// OnNotification observes every complete CLI packet alongside typed events.
+// Callbacks run synchronously and must not block the protocol reader.
+func (a *Agent) OnNotification(callback func(WireNotification)) func() {
+	return a.sdk.OnNotification(callback)
+}
+
 // Run represents a single agent run.
 type Run struct {
 	id     string
@@ -669,4 +675,12 @@ func mergePromptOptions(params, opts *PromptParams) {
 	if opts.AgentsMd != nil {
 		params.AgentsMd = opts.AgentsMd
 	}
+}
+
+// SDK returns this agent's CLI-backed SDK for the complete typed runtime control surface.
+func (a *Agent) SDK() *SDK { return a.sdk }
+
+// ClearMaxThinkingTokens removes the active thinking-token budget.
+func (a *Agent) ClearMaxThinkingTokens(ctx context.Context) error {
+	return a.sdk.ClearMaxThinkingTokens(ctx)
 }

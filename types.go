@@ -5,6 +5,7 @@ package autohand
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -51,6 +52,7 @@ type ProviderName string
 
 const (
 	ProviderAutohandAI ProviderName = "autohandai"
+	ProviderAnthropic  ProviderName = "anthropic"
 	ProviderOpenRouter ProviderName = "openrouter"
 	ProviderOllama     ProviderName = "ollama"
 	ProviderLlamacpp   ProviderName = "llamacpp"
@@ -180,6 +182,8 @@ type Config struct {
 	APIKey         string
 	BaseURL        string
 	AutohandAIPlan string
+	// RunSettings contains native CLI provider, feature and session-awareness settings for this run only.
+	RunSettings map[string]interface{}
 
 	PermissionMode PermissionMode
 	Permissions    *PermissionSettings
@@ -211,11 +215,16 @@ type Config struct {
 	CompressionThreshold   float64
 	SummarizationThreshold float64
 
-	PersistSession   bool
-	SessionID        string
-	Resume           bool
-	Continue         bool
-	Fork             bool
+	// Ephemeral keeps this run out of session history and synchronization.
+	Ephemeral bool
+	// PersistSession is legacy compatibility; use Ephemeral to disable persistence.
+	PersistSession bool
+	SessionID      string
+	Resume         bool
+	Continue       bool
+	Fork           bool
+	// ForkSession is the explicit source reference. Legacy Fork requires SessionID or SessionPath.
+	ForkSession      string
 	SessionPath      string
 	AutoSaveInterval int
 
@@ -520,10 +529,47 @@ type ModelInfo struct {
 
 // AgentInfo holds subagent information.
 type AgentInfo struct {
-	ID          string
-	Name        string
-	Description string
-	Tools       []string
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	Tools            []string `json:"tools"`
+	Model            string   `json:"model,omitempty"`
+	Source           string   `json:"source,omitempty"`
+	ExtensionID      string   `json:"extensionId,omitempty"`
+	ExtensionVersion string   `json:"extensionVersion,omitempty"`
+	ExtensionScope   string   `json:"extensionScope,omitempty"`
+}
+
+// UnmarshalJSON validates the required registry metadata without exposing CLI prompts.
+func (a *AgentInfo) UnmarshalJSON(data []byte) error {
+	type metadata AgentInfo
+	var wire struct {
+		metadata
+		ID          *string   `json:"id"`
+		Name        *string   `json:"name"`
+		Description *string   `json:"description"`
+		Tools       []*string `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if wire.ID == nil || wire.Name == nil || wire.Description == nil || wire.Tools == nil {
+		return fmt.Errorf("agent requires id, name, description, and tools")
+	}
+	if scope := wire.ExtensionScope; scope != "" && scope != "user" && scope != "project" {
+		return fmt.Errorf("agent extensionScope must be user or project")
+	}
+	parsed := AgentInfo(wire.metadata)
+	parsed.ID, parsed.Name, parsed.Description = *wire.ID, *wire.Name, *wire.Description
+	parsed.Tools = make([]string, len(wire.Tools))
+	for i, tool := range wire.Tools {
+		if tool == nil {
+			return fmt.Errorf("agent tools must contain strings")
+		}
+		parsed.Tools[i] = *tool
+	}
+	*a = parsed
+	return nil
 }
 
 // ContextUsage holds context window breakdown.
