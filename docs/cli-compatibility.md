@@ -24,6 +24,8 @@ Supported provider IDs are `anthropic`, `autohandai`, `azure`, `bedrock`, `cereb
 
 ## Sessions and ephemeral runs
 
+Auto-commit options emit `--auto-commit`, never `-c`. The matching CLI release uses `-c` for `--continue`.
+
 Session IDs or paths restore saved history before initialization. Resume/continue selects the latest saved session. Fork requires an explicit source and the CLI's experimental-fork feature; it creates a new session with recorded ancestry. Missing sources and disabled forks fail instead of silently creating an empty session.
 
 Persistence follows the CLI default. Set Config.Ephemeral to true to keep a run out of session history, auto-memory and session synchronization. The legacy persist/persistSession/persist_session fields are retained for source compatibility and do not control automatic persistence. Use the explicit ephemeral option when persistence must be disabled. Ephemeral runs cannot resume or fork saved history; the CLI rejects that combination.

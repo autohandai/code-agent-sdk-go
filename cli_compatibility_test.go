@@ -27,3 +27,22 @@ func TestEphemeralModeIsExplicit(t *testing.T) {
 		t.Fatal("ephemeral mode not forwarded")
 	}
 }
+
+func TestAutoCommitUsesLongFlag(t *testing.T) {
+	args := buildCLIArgs(&Config{AutoCommit: true})
+	found := false
+	for _, arg := range args {
+		if arg == "-c" {
+			t.Fatal("auto-commit emitted continue")
+		}
+		if arg == "--auto-commit" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("missing long auto-commit flag")
+	}
+	if err := validateCLIArguments(args); err != nil {
+		t.Fatal(err)
+	}
+}

@@ -174,7 +174,7 @@ func buildCLIArgs(cfg *Config) []string {
 	flag(cfg.Unrestricted, "--unrestricted")
 	flag(cfg.AutoMode, "--auto-mode")
 	flag(cfg.AutoSkill, "--auto-skill")
-	flag(cfg.AutoCommit, "-c")
+	flag(cfg.AutoCommit, "--auto-commit")
 	if cfg.IdleLogout != nil && !*cfg.IdleLogout {
 		args = append(args, "--no-idle-logout")
 	}
