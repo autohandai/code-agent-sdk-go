@@ -74,7 +74,7 @@ func TestGoalRPCMethodsAndSnakeCaseParams(t *testing.T) {
 
 func TestBuildCLIArgsCurrentRuntimeContract(t *testing.T) {
 	no := false
-	got := buildCLIArgs(&Config{Bare: true, IdleLogout: &no, Fork: true, NoAgentsMd: true, NoContextCompact: true, SkillSources: []string{"user", "project"}, InstallMissingSkills: true, DisplayLanguage: "pt-BR", SystemPromptFile: "system.md", AppendSystemPromptFile: "append.md", MCPConfig: "mcp.json", Agents: "agents.json", PluginDir: "plugins"})
+	got := buildCLIArgs(&Config{Bare: true, IdleLogout: &no, ForkSession: "source-session", NoAgentsMd: true, NoContextCompact: true, SkillSources: []string{"user", "project"}, InstallMissingSkills: true, DisplayLanguage: "pt-BR", SystemPromptFile: "system.md", AppendSystemPromptFile: "append.md", MCPConfig: "mcp.json", Agents: "agents.json", PluginDir: "plugins"})
 	wantParts := []string{"--bare", "--no-idle-logout", "--fork", "--no-agents-md", "--no-context-compact", "--skill-sources", "user,project", "--install-missing-skills", "--display-language", "pt-BR", "--system-prompt-file", "system.md", "--append-system-prompt-file", "append.md", "--mcp-config", "mcp.json", "--agents", "agents.json", "--plugin-dir", "plugins"}
 	joined := strings.Join(got, " ")
 	for _, part := range wantParts {
@@ -87,7 +87,7 @@ func TestBuildCLIArgsCurrentRuntimeContract(t *testing.T) {
 func TestAutohandAIEnvironmentAndTurnUsage(t *testing.T) {
 	env := buildCLIEnv(&Config{Provider: ProviderAutohandAI, APIKey: "key", BaseURL: "https://api", Env: map[string]string{"AUTOHAND_AI_PLAN": "max"}}, nil)
 	joined := strings.Join(env, "\n")
-	for _, value := range []string{"AUTOHAND_PROVIDER=autohandai", "AUTOHAND_AI_PLAN=cloud", "AUTOHAND_AI_API_KEY=key", "AUTOHAND_AI_BASE_URL=https://api", "AUTOHAND_AI_PLAN=max"} {
+	for _, value := range []string{"AUTOHAND_PROVIDER=autohandai", "AUTOHAND_AI_API_KEY=key", "AUTOHAND_AI_BASE_URL=https://api", "AUTOHAND_AI_PLAN=max"} {
 		if !strings.Contains(joined, value) {
 			t.Errorf("missing %s", value)
 		}
@@ -101,7 +101,7 @@ func TestAutohandAIEnvironmentAndTurnUsage(t *testing.T) {
 	}
 }
 
-func TestStartupAppliesFeatureSettingsRPC(t *testing.T) {
+func TestStartupUsesFeaturesEnvelopeWithoutReplacingMergedSettings(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("shell fake CLI")
 	}
@@ -113,6 +113,7 @@ while [ "$#" -gt 0 ]; do
   if [ "$1" = "--test-log" ]; then log="$2"; shift; fi
   shift
 done
+printf 'settings:%s\n' "$AUTOHAND_RUN_SETTINGS" >> "$log"
 while IFS= read -r line; do
   printf '%s\n' "$line" >> "$log"
   id=$(printf '%s\n' "$line" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p')
@@ -137,7 +138,10 @@ done
 		t.Fatal(err)
 	}
 	want := `"method":"autohand.applyFlagSettings"`
-	if !strings.Contains(string(contents), want) || !strings.Contains(string(contents), `"features":{"slashGoal":true}`) {
-		t.Fatalf("startup request missing feature settings: %s", fmt.Sprintf("%s", contents))
+	if strings.Contains(string(contents), want) {
+		t.Fatalf("startup must not replace merged feature settings: %s", fmt.Sprintf("%s", contents))
+	}
+	if !strings.Contains(string(contents), `"features":{"slashGoal":true}`) {
+		t.Fatal("startup features must use the private settings envelope")
 	}
 }

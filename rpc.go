@@ -38,6 +38,12 @@ func NewRPCClient(cfg *Config) *RPCClient {
 	return c
 }
 
+// OnNotification observes every complete CLI packet alongside typed events.
+// Callbacks run synchronously and must not block the protocol reader.
+func (c *RPCClient) OnNotification(callback func(WireNotification)) func() {
+	return c.transport.ObserveNotifications(callback)
+}
+
 // Start starts the transport.
 func (c *RPCClient) Start(ctx context.Context, cfg *Config) error {
 	return c.transport.Start(ctx, cfg)
@@ -1019,4 +1025,10 @@ func (c *RPCClient) setupNotifications() {
 		event.Type = "autoresearch"
 		c.queueEvent(event)
 	})
+}
+
+// ClearMaxThinkingTokens removes the thinking-token budget using explicit JSON null.
+func (c *RPCClient) ClearMaxThinkingTokens(ctx context.Context) error {
+	_, err := c.transport.Request(ctx, "autohand.maxThinkingTokensSet", map[string]interface{}{"maxThinkingTokens": nil})
+	return err
 }

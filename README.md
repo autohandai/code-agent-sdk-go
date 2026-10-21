@@ -219,3 +219,5 @@ go vet ./...
 ## License
 
 MIT
+
+See [CLI compatibility and migration notes](docs/cli-compatibility.md) for this unreleased source revision, including provider startup settings, complete notifications and ephemeral sessions.

@@ -44,6 +44,12 @@ func NewSDK(cfg *Config) *SDK {
 	}
 }
 
+// OnNotification observes every complete CLI packet alongside typed events.
+// Callbacks run synchronously and must not block the protocol reader.
+func (s *SDK) OnNotification(callback func(WireNotification)) func() {
+	return s.client.OnNotification(callback)
+}
+
 // Start starts the SDK and initializes the CLI subprocess.
 func (s *SDK) Start(ctx context.Context) error {
 	s.mu.Lock()
@@ -64,11 +70,6 @@ func (s *SDK) Start(ctx context.Context) error {
 	}
 	if _, err := s.client.GetState(ctx); err != nil {
 		return rollback(fmt.Errorf("wait for CLI readiness: %w", err))
-	}
-	if s.cfg.Features != nil {
-		if err := s.client.ApplyFlagSettings(ctx, map[string]interface{}{"features": s.cfg.Features}); err != nil {
-			return rollback(fmt.Errorf("apply startup feature settings: %w", err))
-		}
 	}
 
 	if s.cfg.PermissionMode != "" && s.cfg.PermissionMode != PermissionInteractive {
@@ -895,4 +896,12 @@ func (s *SDK) ensureStarted(ctx context.Context) error {
 		return s.Start(ctx)
 	}
 	return nil
+}
+
+// ClearMaxThinkingTokens restores the CLI's default thinking-token budget.
+func (s *SDK) ClearMaxThinkingTokens(ctx context.Context) error {
+	if err := s.ensureStarted(ctx); err != nil {
+		return err
+	}
+	return s.client.ClearMaxThinkingTokens(ctx)
 }

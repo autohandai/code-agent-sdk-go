@@ -22,6 +22,19 @@ var (
 	ErrTransportClosed = errors.New("transport response stream closed")
 )
 
+// WireNotification retains the exact CLI method and JSON parameters.
+// Each observer receives its own Params slice. Callbacks run on the reader goroutine
+// and should hand off blocking work rather than issuing synchronous RPC requests.
+type WireNotification struct {
+	Method string
+	Params json.RawMessage
+}
+
+type notificationObserver struct {
+	id       uint64
+	callback func(WireNotification)
+}
+
 // Transport manages the CLI subprocess and JSON-RPC communication.
 type Transport struct {
 	cmd    *exec.Cmd
@@ -31,14 +44,16 @@ type Transport struct {
 
 	lineReader *LineReader
 
-	mu            sync.Mutex
-	callbacks     map[int]chan transportResponse
-	notify        map[string]func(json.RawMessage)
-	unknownNotify func(string, json.RawMessage)
-	onClose       func()
-	nextID        int
-	debug         bool
-	timeout       time.Duration
+	mu             sync.Mutex
+	callbacks      map[int]chan transportResponse
+	notify         map[string]func(json.RawMessage)
+	unknownNotify  func(string, json.RawMessage)
+	observers      []notificationObserver
+	nextObserverID uint64
+	onClose        func()
+	nextID         int
+	debug          bool
+	timeout        time.Duration
 }
 
 // NewTransport creates a Transport with the given config.
@@ -59,6 +74,14 @@ func NewTransport(cfg *Config) *Transport {
 // Start spawns the CLI subprocess.
 func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 	if err := ctx.Err(); err != nil {
+		return err
+	}
+	args := buildCLIArgs(cfg)
+	if err := validateCLIArguments(args[:len(args)-len(cfg.ExtraArgs)]); err != nil {
+		return err
+	}
+	runtimeSettings, err := buildRuntimeSettings(cfg)
+	if err != nil {
 		return err
 	}
 	cliPath := cfg.CLIPath
@@ -84,19 +107,24 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 		t.log("copySkillFiles warning: %s", err)
 	}
 
-	args := buildCLIArgs(cfg)
-
 	t.log("Starting CLI: %s", cliPath)
 	t.log("Args: %v", args)
 
 	env := buildCLIEnv(cfg, os.Environ())
+	if needsRuntimeSettings(cfg) {
+		encoded, err := json.Marshal(runtimeSettings)
+		if err != nil {
+			return errors.New("invalid run settings")
+		}
+		env = append(env, "AUTOHAND_RUN_SETTINGS="+string(encoded))
+		args = append(args, "--sdk-settings-version", "1")
+	}
 
 	// Request contexts bound startup work, not the lifetime of the reusable CLI process.
 	t.cmd = exec.Command(cliPath, args...)
 	t.cmd.Dir = cwd
 	t.cmd.Env = env
 
-	var err error
 	t.stdin, err = t.cmd.StdinPipe()
 	if err != nil {
 		return fmt.Errorf("stdin pipe: %w", err)
@@ -129,6 +157,9 @@ func (t *Transport) Start(ctx context.Context, cfg *Config) error {
 
 func buildCLIArgs(cfg *Config) []string {
 	args := []string{"--mode", "rpc"}
+	if cfg.Ephemeral {
+		args = append(args, "--ephemeral")
+	}
 	flag := func(ok bool, name string) {
 		if ok {
 			args = append(args, name)
@@ -149,12 +180,19 @@ func buildCLIArgs(cfg *Config) []string {
 	}
 	flag(cfg.ContextCompact, "--context-compact")
 	flag(cfg.NoContextCompact, "--no-context-compact")
-	flag(cfg.PersistSession, "--persist-session")
-	value("--session-id", cfg.SessionID)
-	flag(cfg.Resume, "--resume")
-	flag(cfg.Continue, "--continue")
-	flag(cfg.Fork, "--fork")
-	value("--session-path", cfg.SessionPath)
+	if fork := forkSessionReference(cfg); fork != "" {
+		value("--fork", fork)
+	} else {
+		reference := cfg.SessionID
+		if reference == "" {
+			reference = cfg.SessionPath
+		}
+		if reference != "" {
+			value("--sdk-session-reference", reference)
+		} else {
+			flag(cfg.Resume || cfg.Continue, "--sdk-resume-last")
+		}
+	}
 	if cfg.AutoSaveInterval > 0 {
 		value("--auto-save-interval", fmt.Sprint(cfg.AutoSaveInterval))
 	}
@@ -206,7 +244,7 @@ func buildCLIArgs(cfg *Config) []string {
 	}
 	value("--yolo", cfg.Yolo)
 	if cfg.YoloTimeout > 0 {
-		value("--yolo-timeout", fmt.Sprint(cfg.YoloTimeout))
+		value("--timeout", fmt.Sprint(cfg.YoloTimeout))
 	}
 	for _, dir := range append(append([]string{}, cfg.AddDir...), cfg.AdditionalDirectories...) {
 		value("--add-dir", dir)
@@ -217,11 +255,9 @@ func buildCLIArgs(cfg *Config) []string {
 func buildCLIEnv(cfg *Config, base []string) []string {
 	env := append(append([]string{}, base...), "AUTOHAND_STREAM_TOOL_OUTPUT=1")
 	if cfg.Provider == ProviderAutohandAI {
-		plan := cfg.AutohandAIPlan
-		if plan == "" {
-			plan = "cloud"
+		if cfg.AutohandAIPlan != "" {
+			env = append(env, "AUTOHAND_AI_PLAN="+cfg.AutohandAIPlan)
 		}
-		env = append(env, "AUTOHAND_AI_PLAN="+plan)
 		if cfg.APIKey != "" {
 			env = append(env, "AUTOHAND_AI_API_KEY="+cfg.APIKey)
 		}
@@ -353,6 +389,35 @@ func (t *Transport) OnNotification(method string, handler func(json.RawMessage))
 	t.notify[method] = handler
 }
 
+// ObserveNotifications subscribes without replacing method-specific handlers.
+// The returned function safely removes only this subscription.
+func (t *Transport) ObserveNotifications(callback func(WireNotification)) func() {
+	t.mu.Lock()
+	t.nextObserverID++
+	id := t.nextObserverID
+	t.observers = append(t.observers, notificationObserver{id: id, callback: callback})
+	t.mu.Unlock()
+	return func() {
+		t.mu.Lock()
+		defer t.mu.Unlock()
+		for i, observer := range t.observers {
+			if observer.id == id {
+				t.observers = append(t.observers[:i], t.observers[i+1:]...)
+				break
+			}
+		}
+	}
+}
+
+func (t *Transport) notifyObserver(callback func(WireNotification), packet WireNotification) {
+	defer func() {
+		if recover() != nil {
+			t.log("Notification observer failed")
+		}
+	}()
+	callback(WireNotification{Method: packet.Method, Params: append(json.RawMessage(nil), packet.Params...)})
+}
+
 // OffNotification removes a notification handler.
 func (t *Transport) OffNotification(method string) {
 	t.mu.Lock()
@@ -444,7 +509,14 @@ func (t *Transport) handleLine(line string) {
 	t.mu.Lock()
 	handler, ok := t.notify[notif.Method]
 	unknownHandler := t.unknownNotify
+	observers := append([]notificationObserver(nil), t.observers...)
 	t.mu.Unlock()
+	if notif.Method == "" {
+		return
+	}
+	for _, observer := range observers {
+		t.notifyObserver(observer.callback, WireNotification{Method: notif.Method, Params: notif.Params})
+	}
 	if ok {
 		handler(notif.Params)
 	} else if unknownHandler != nil {

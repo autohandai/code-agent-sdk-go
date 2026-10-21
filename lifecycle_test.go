@@ -9,20 +9,20 @@ import (
 	"time"
 )
 
-func writeLifecycleCLI(t *testing.T, featureError bool) string {
+func writeLifecycleCLI(t *testing.T, startupError bool) string {
 	t.Helper()
 	if runtime.GOOS == "windows" {
 		t.Skip("POSIX fake CLI")
 	}
-	featureReply := `{"ok":true}`
-	if featureError {
-		featureReply = `null,"error":{"code":-32000,"message":"feature failure"}`
+	startupReply := `{"ok":true}`
+	if startupError {
+		startupReply = `null,"error":{"code":-32000,"message":"readiness failure"}`
 	}
 	script := `#!/bin/sh
 while IFS= read -r line; do
   id=$(printf '%s\n' "$line" | sed -n 's/.*"id":\([0-9][0-9]*\).*/\1/p')
   case "$line" in
-    *autohand.applyFlagSettings*) printf '{"jsonrpc":"2.0","id":%s,"result":` + featureReply + `}\n' "$id" ;;
+    *autohand.getState*) printf '{"jsonrpc":"2.0","id":%s,"result":` + startupReply + `}\n' "$id" ;;
     *) printf '{"jsonrpc":"2.0","id":%s,"result":{}}\n' "$id" ;;
   esac
 done

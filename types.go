@@ -52,6 +52,7 @@ type ProviderName string
 
 const (
 	ProviderAutohandAI ProviderName = "autohandai"
+	ProviderAnthropic  ProviderName = "anthropic"
 	ProviderOpenRouter ProviderName = "openrouter"
 	ProviderOllama     ProviderName = "ollama"
 	ProviderLlamacpp   ProviderName = "llamacpp"
@@ -181,6 +182,8 @@ type Config struct {
 	APIKey         string
 	BaseURL        string
 	AutohandAIPlan string
+	// RunSettings contains native CLI provider, feature and session-awareness settings for this run only.
+	RunSettings map[string]interface{}
 
 	PermissionMode PermissionMode
 	Permissions    *PermissionSettings
@@ -212,11 +215,16 @@ type Config struct {
 	CompressionThreshold   float64
 	SummarizationThreshold float64
 
-	PersistSession   bool
-	SessionID        string
-	Resume           bool
-	Continue         bool
-	Fork             bool
+	// Ephemeral keeps this run out of session history and synchronization.
+	Ephemeral bool
+	// PersistSession is legacy compatibility; use Ephemeral to disable persistence.
+	PersistSession bool
+	SessionID      string
+	Resume         bool
+	Continue       bool
+	Fork           bool
+	// ForkSession is the explicit source reference. Legacy Fork requires SessionID or SessionPath.
+	ForkSession      string
 	SessionPath      string
 	AutoSaveInterval int
 
